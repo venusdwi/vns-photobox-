@@ -1,0 +1,1053 @@
+```html
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>VNS PHOTOBOX</title>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body, html {
+            width: 100%;
+            height: 100%;
+            font-family: 'Poppins', sans-serif;
+            overflow: hidden;
+            background-color: #000;
+        }
+
+        .app-container {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            background: linear-gradient(135deg, #fceabb 0%, #f8b500 50%, #8dc84b 100%);
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 12px;
+            opacity: 0;
+            pointer-events: none;
+            transform: scale(1.1);
+            transition: transform 0.5s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.4s ease;
+            z-index: 10;
+        }
+
+        .screen.active {
+            opacity: 1;
+            pointer-events: auto;
+            transform: scale(1);
+        }
+
+        .main-title {
+            font-family: 'Fredoka One', cursive;
+            font-size: 42px;
+            color: #ffffff;
+            text-align: center;
+            line-height: 1.1;
+            margin-bottom: 25px;
+            letter-spacing: 2px;
+            text-shadow: -2px 2px 0px #ff007f, -4px 4px 0px #00e5ff, -6px 6px 15px rgba(0,0,0,0.3);
+        }
+
+        .camera-icon-wrapper {
+            background: rgba(255, 255, 255, 0.95);
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 30px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.15);
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+            100% { transform: translateY(0px); }
+        }
+
+        .camera-icon-wrapper svg { color: #ff007f; width: 60px; height: 60px; }
+
+        .btn {
+            background: #ffffff;
+            border: none;
+            border-radius: 50px;
+            width: 100%;
+            max-width: 280px;
+            padding: 13px;
+            font-family: 'Poppins', sans-serif;
+            font-weight: 700;
+            font-size: 15px;
+            cursor: pointer;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            transition: all 0.2s cubic-bezier(0.25, 1, 0.5, 1);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .btn:active { transform: scale(0.92); }
+        .btn-primary { color: #6a0dad; }
+        .btn-gallery { color: #00897b; background: rgba(255,255,255,0.95); }
+        .btn-secondary { color: #ff5722; background: rgba(255,255,255,0.9); flex-shrink: 0; }
+
+        #screen-template {
+            justify-content: flex-start;
+            padding-top: 20px;
+            padding-bottom: 25px;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .subtitle {
+            font-family: 'Fredoka One', cursive;
+            font-size: 20px;
+            color: #fff;
+            margin-bottom: 12px;
+            text-shadow: -2px 2px 0px #ff007f;
+            text-align: center;
+            flex-shrink: 0;
+        }
+
+        .template-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            width: 100%;
+            max-width: 460px;
+            margin-bottom: 15px;
+            justify-items: center;
+            flex-shrink: 0;
+        }
+
+        .template-preview-card {
+            background: transparent;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            cursor: pointer;
+            transition: transform 0.2s;
+            width: 100%;
+        }
+
+        .template-preview-card:active {
+            transform: scale(0.95);
+        }
+
+        .mini-strip {
+            width: 100px;
+            height: 190px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 8px;
+            border-radius: 10px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+        }
+
+        .mini-slot {
+            width: 100%;
+            flex: 1;
+            background: #ffffff;
+            border-radius: 4px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Fredoka One', cursive;
+            font-size: 13px;
+            color: #444;
+        }
+
+        .strip-theme-1 { background: #ffffff; border: 2px solid #e0e0e0; }
+        .strip-theme-1 .mini-slot { border: 2px solid #e0e0e0; }
+
+        .strip-theme-2 { background: #1a1a1a; border: 2px solid #333; }
+        .strip-theme-2 .mini-slot { border: 2px solid #333; }
+
+        .strip-theme-3 { background: linear-gradient(135deg, #ff007f, #00e5ff); }
+        .strip-theme-3 .mini-slot { border: 2px solid rgba(255,255,255,0.7); }
+
+        .strip-theme-4 { background: #ffe4e1; border: 2.5px dashed #ff69b4; border-radius: 10px; }
+        .strip-theme-4 .mini-slot { border: 2px dashed #ff69b4; }
+
+        .strip-theme-5 { background: linear-gradient(135deg, #ffe082, #ffb74d); border: 2.5px solid #ffa000; }
+        .strip-theme-5 .mini-slot { border: 2px solid #ffa000; }
+
+        .strip-theme-6 { background: linear-gradient(135deg, #b388ff, #7c4dff); }
+        .strip-theme-6 .mini-slot { border: 2px solid #512da8; }
+
+        .strip-theme-7 { background: linear-gradient(135deg, #a7ffeb, #1de9b6); border: 2.5px solid #00bfa5; }
+        .strip-theme-7 .mini-slot { border: 2px solid #00897b; }
+
+        .strip-theme-8 { background: #263238; border: 2.5px solid #ffca28; }
+        .strip-theme-8 .mini-slot { border: 2px solid #ffca28; }
+
+        .strip-theme-9 { background: linear-gradient(135deg, #ff8a80, #ff5252); border: 2.5px solid #d32f2f; }
+        .strip-theme-9 .mini-slot { border: 2px solid #b71c1c; }
+
+        .strip-theme-10 { background: linear-gradient(135deg, #81d4fa, #0288d1); border: 2.5px solid #01579b; }
+        .strip-theme-10 .mini-slot { border: 2px solid #01579b; }
+
+        .strip-theme-11 { background: linear-gradient(135deg, #f8bbd0, #e91e63); border: 2.5px solid #c2185b; }
+        .strip-theme-11 .mini-slot { border: 2px solid #880e4f; }
+
+        .strip-theme-12 { background: linear-gradient(135deg, #dcedc8, #689f38); border: 2.5px solid #33691e; }
+        .strip-theme-12 .mini-slot { border: 2px solid #33691e; }
+
+        #screen-camera {
+            background-color: #111;
+            padding: 0;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #live-video {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: 1;
+            transform: scaleX(-1);
+        }
+
+        .camera-controls {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 120px;
+            background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
+            z-index: 3;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 0 30px;
+            padding-bottom: 20px;
+        }
+
+        .btn-cam-back {
+            position: absolute;
+            left: 30px;
+            background: rgba(255,255,255,0.2);
+            color: #fff;
+            border: 2px solid #fff;
+            padding: 10px 20px;
+            border-radius: 30px;
+            font-weight: 600;
+            cursor: pointer;
+            backdrop-filter: blur(10px);
+        }
+
+        .btn-capture {
+            width: 75px;
+            height: 75px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, rgba(255, 0, 127, 0.3), rgba(0, 229, 255, 0.3));
+            border: 4px solid transparent;
+            background-image: linear-gradient(135deg, rgba(255,0,127,0.3), rgba(0,229,255,0.3)), linear-gradient(135deg, #ff007f, #00e5ff);
+            background-origin: border-box;
+            background-clip: padding-box, border-box;
+            outline: none;
+            cursor: pointer;
+            box-shadow: 0 0 25px rgba(255, 0, 127, 0.7), 0 0 25px rgba(0, 229, 255, 0.7);
+            transition: all 0.2s ease;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+        .btn-capture:active { 
+            transform: scale(0.9); 
+            box-shadow: 0 0 12px rgba(255, 0, 127, 0.9), 0 0 12px rgba(0, 229, 255, 0.9);
+        }
+
+        .countdown-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-family: 'Fredoka One', cursive;
+            font-size: 150px;
+            color: #ffffff;
+            text-shadow: 0 10px 30px rgba(0,0,0,0.8), 0 0 20px #ff007f;
+            z-index: 4;
+            display: none;
+            animation: popIn 1s infinite;
+        }
+
+        @keyframes popIn {
+            0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+            30% { transform: translate(-50%, -50%) scale(1.1); opacity: 1; }
+            50% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+            100% { transform: translate(-50%, -50%) scale(0.9); opacity: 0; }
+        }
+
+        .photo-indicator {
+            position: absolute;
+            top: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.6);
+            color: white;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-weight: 600;
+            z-index: 3;
+            letter-spacing: 1px;
+            display: none;
+        }
+
+        .flash-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: white;
+            z-index: 15;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.15s ease-out;
+        }
+
+        #screen-result {
+            background-color: #222;
+            justify-content: center;
+            align-items: center;
+            padding: 10px 15px;
+            overflow: hidden;
+        }
+
+        .result-title {
+            color: white;
+            font-family: 'Fredoka One', cursive;
+            margin-bottom: 8px;
+            font-size: 20px;
+            text-align: center;
+        }
+
+        .frame-result {
+            width: 170px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.6);
+            margin-bottom: 12px;
+            border-radius: 10px;
+            overflow: hidden;
+            align-self: center;
+        }
+
+        .strip-header {
+            text-align: center;
+            font-family: 'Fredoka One', cursive;
+            font-size: 11px;
+            padding: 5px 0;
+            letter-spacing: 1.5px;
+        }
+
+        .photo-slot-wrapper {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 4 / 3;
+            box-sizing: border-box;
+        }
+
+        .photo-slot {
+            width: 100%;
+            height: 100%;
+            background-size: cover;
+            background-position: center;
+            transform: scaleX(-1);
+            position: relative;
+        }
+
+        .strip-footer {
+            text-align: center;
+            font-size: 9px;
+            font-weight: 700;
+            padding: 5px 0;
+            letter-spacing: 1px;
+        }
+
+        .theme-strip1 { background: #ffffff; padding: 8px; gap: 5px; border: 2px solid #e0e0e0; }
+        .theme-strip1 .strip-header { color: #444; border-bottom: 1px dashed #ccc; margin-bottom: 2px; }
+        .theme-strip1 .photo-slot-wrapper { border: 4px solid #ffffff; }
+        .theme-strip1 .strip-footer { color: #666; border-top: 1px dashed #ccc; margin-top: 2px; }
+
+        .theme-strip2 { background: #121212; padding: 8px; gap: 5px; border: 2px solid #333; }
+        .theme-strip2 .strip-header { color: #f1f1f1; border-bottom: 1px solid #333; margin-bottom: 2px; }
+        .theme-strip2 .photo-slot-wrapper { border: 4px solid #1a1a1a; }
+        .theme-strip2 .strip-footer { color: #aaa; border-top: 1px solid #333; margin-top: 2px; }
+
+        .theme-strip3 { background: linear-gradient(135deg, #ff007f, #00e5ff); padding: 8px; gap: 5px; box-shadow: 0 0 25px rgba(255,0,127,0.4); }
+        .theme-strip3 .strip-header { color: #fff; text-shadow: 1px 1px 3px rgba(0,0,0,0.6); border-bottom: 2px solid rgba(255,255,255,0.4); margin-bottom: 2px; }
+        .theme-strip3 .photo-slot-wrapper { border: 4px solid rgba(255,255,255,0.8); }
+        .theme-strip3 .strip-footer { color: #fff; text-shadow: 1px 1px 3px rgba(0,0,0,0.6); border-top: 2px solid rgba(255,255,255,0.4); margin-top: 2px; }
+
+        .theme-strip4 { background: #fff0f5; padding: 8px; gap: 5px; border: 3px dashed #ff69b4; border-radius: 12px; }
+        .theme-strip4 .strip-header { color: #ff1493; border-bottom: 2px dotted #ffb6c1; margin-bottom: 2px; }
+        .theme-strip4 .photo-slot-wrapper { border: 4px dashed #ff69b4; border-radius: 4px; }
+        .theme-strip4 .strip-footer { color: #ff69b4; border-top: 2px dotted #ffb6c1; margin-top: 2px; }
+
+        .theme-strip5 { background: linear-gradient(135deg, #fff8e1, #ffecb3); padding: 8px; gap: 5px; border: 2px solid #ffb300; border-radius: 10px; }
+        .theme-strip5 .strip-header { color: #ff8f00; border-bottom: 2px solid #ffe082; margin-bottom: 2px; }
+        .theme-strip5 .photo-slot-wrapper { border: 4px solid #ffa000; border-radius: 4px; }
+        .theme-strip5 .strip-footer { color: #ff8f00; border-top: 2px solid #ffe082; margin-top: 2px; }
+
+        .theme-strip6 { background: linear-gradient(135deg, #ede7f6, #d1c4e9); padding: 8px; gap: 5px; border: 2px solid #7c4dff; border-radius: 10px; }
+        .theme-strip6 .strip-header { color: #512da8; border-bottom: 2px solid #b388ff; margin-bottom: 2px; }
+        .theme-strip6 .photo-slot-wrapper { border: 4px solid #512da8; border-radius: 4px; }
+        .theme-strip6 .strip-footer { color: #512da8; border-top: 2px solid #b388ff; margin-top: 2px; }
+
+        .theme-strip7 { background: linear-gradient(135deg, #e0f2f1, #b2dfdb); padding: 8px; gap: 5px; border: 2px solid #00bfa5; border-radius: 10px; }
+        .theme-strip7 .strip-header { color: #00796b; border-bottom: 2px solid #80cbc4; margin-bottom: 2px; }
+        .theme-strip7 .photo-slot-wrapper { border: 4px solid #00897b; border-radius: 4px; }
+        .theme-strip7 .strip-footer { color: #00796b; border-top: 2px solid #80cbc4; margin-top: 2px; }
+
+        .theme-strip8 { background: #263238; padding: 8px; gap: 5px; border: 2px solid #ffca28; border-radius: 10px; }
+        .theme-strip8 .strip-header { color: #ffca28; border-bottom: 2px solid #37474f; margin-bottom: 2px; }
+        .theme-strip8 .photo-slot-wrapper { border: 4px solid #ffca28; border-radius: 4px; }
+        .theme-strip8 .strip-footer { color: #ffca28; border-top: 2px solid #37474f; margin-top: 2px; }
+
+        .theme-strip9 { background: linear-gradient(135deg, #ff8a80, #ff5252); padding: 8px; gap: 5px; border: 2px solid #d32f2f; border-radius: 10px; }
+        .theme-strip9 .strip-header { color: #fff; border-bottom: 2px solid #ff8a80; margin-bottom: 2px; text-shadow: 1px 1px 2px rgba(0,0,0,0.4); }
+        .theme-strip9 .photo-slot-wrapper { border: 4px solid #b71c1c; border-radius: 4px; }
+        .theme-strip9 .strip-footer { color: #fff; border-top: 2px solid #ff8a80; margin-top: 2px; text-shadow: 1px 1px 2px rgba(0,0,0,0.4); }
+
+        .theme-strip10 { background: linear-gradient(135deg, #81d4fa, #0288d1); padding: 8px; gap: 5px; border: 2px solid #01579b; border-radius: 10px; }
+        .theme-strip10 .strip-header { color: #fff; border-bottom: 2px solid #81d4fa; margin-bottom: 2px; text-shadow: 1px 1px 2px rgba(0,0,0,0.4); }
+        .theme-strip10 .photo-slot-wrapper { border: 4px solid #01579b; border-radius: 4px; }
+        .theme-strip10 .strip-footer { color: #fff; border-top: 2px solid #81d4fa; margin-top: 2px; text-shadow: 1px 1px 2px rgba(0,0,0,0.4); }
+
+        .theme-strip11 { background: linear-gradient(135deg, #f8bbd0, #e91e63); padding: 8px; gap: 5px; border: 2px solid #c2185b; border-radius: 10px; }
+        .theme-strip11 .strip-header { color: #fff; border-bottom: 2px solid #f8bbd0; margin-bottom: 2px; text-shadow: 1px 1px 2px rgba(0,0,0,0.4); }
+        .theme-strip11 .photo-slot-wrapper { border: 4px solid #880e4f; border-radius: 4px; }
+        .theme-strip11 .strip-footer { color: #fff; border-top: 2px solid #f8bbd0; margin-top: 2px; text-shadow: 1px 1px 2px rgba(0,0,0,0.4); }
+
+        .theme-strip12 { background: linear-gradient(135deg, #dcedc8, #689f38); padding: 8px; gap: 5px; border: 2px solid #33691e; border-radius: 10px; }
+        .theme-strip12 .strip-header { color: #1b5e20; border-bottom: 2px solid #c8e6c9; margin-bottom: 2px; }
+        .theme-strip12 .photo-slot-wrapper { border: 4px solid #33691e; border-radius: 4px; }
+        .theme-strip12 .strip-footer { color: #1b5e20; border-top: 2px solid #c8e6c9; margin-top: 2px; }
+
+        .result-actions {
+            display: flex;
+            gap: 10px;
+            width: 100%;
+            max-width: 270px;
+            justify-content: center;
+        }
+
+        .result-actions .btn {
+            padding: 11px;
+            font-size: 13px;
+            margin-bottom: 0;
+        }
+
+        #screen-gallery {
+            background-color: #1a1a1a;
+            justify-content: flex-start;
+            padding-top: 30px;
+            padding-bottom: 30px;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .gallery-container {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            width: 100%;
+            max-width: 480px;
+            margin-bottom: 20px;
+            justify-items: center;
+        }
+
+        .gallery-item {
+            width: 150px;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.5);
+            background: #fff;
+            transform: scale(0.95);
+            transition: transform 0.2s;
+            cursor: pointer;
+        }
+
+        .gallery-item:active {
+            transform: scale(0.9);
+        }
+
+        .empty-gallery {
+            color: #aaa;
+            text-align: center;
+            font-size: 15px;
+            margin-top: 60px;
+            font-style: italic;
+        }
+
+        /* Modal / Detail View for Gallery */
+        .modal-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+            backdrop-filter: blur(8px);
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-content-wrapper {
+            max-height: 75vh;
+            overflow-y: auto;
+            display: flex;
+            justify-content: center;
+            width: 100%;
+            margin-bottom: 15px;
+        }
+
+        .modal-content-wrapper .frame-result {
+            width: 200px;
+            transform: scale(1);
+            margin: 0;
+        }
+
+        #capture-canvas { display: none; }
+    </style>
+</head>
+<body>
+
+    <div class="app-container">
+
+        <div id="screen-home" class="screen active">
+            <h1 class="main-title">VNS<br>PHOTOBOX</h1>
+            
+            <div class="camera-icon-wrapper">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                    <circle cx="12" cy="13" r="4"></circle>
+                </svg>
+            </div>
+
+            <button class="btn btn-primary" onclick="navigate('screen-template')">
+                MULAI FOTO
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            </button>
+
+            <button class="btn btn-gallery" onclick="openGalleryFromHome()">
+                GALERI FOTO
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+            </button>
+        </div>
+
+        <div id="screen-template" class="screen">
+            <h2 class="subtitle">PILIH TEMPLATE STRIP</h2>
+            
+            <div class="template-grid">
+                <div class="template-preview-card" onclick="prepareCamera('theme-strip1')">
+                    <div class="mini-strip strip-theme-1">
+                        <div class="mini-slot">1</div>
+                        <div class="mini-slot">2</div>
+                        <div class="mini-slot">3</div>
+                    </div>
+                </div>
+
+                <div class="template-preview-card" onclick="prepareCamera('theme-strip2')">
+                    <div class="mini-strip strip-theme-2">
+                        <div class="mini-slot">1</div>
+                        <div class="mini-slot">2</div>
+                        <div class="mini-slot">3</div>
+                    </div>
+                </div>
+
+                <div class="template-preview-card" onclick="prepareCamera('theme-strip3')">
+                    <div class="mini-strip strip-theme-3">
+                        <div class="mini-slot">1</div>
+                        <div class="mini-slot">2</div>
+                        <div class="mini-slot">3</div>
+                    </div>
+                </div>
+
+                <div class="template-preview-card" onclick="prepareCamera('theme-strip4')">
+                    <div class="mini-strip strip-theme-4">
+                        <div class="mini-slot">1</div>
+                        <div class="mini-slot">2</div>
+                        <div class="mini-slot">3</div>
+                    </div>
+                </div>
+
+                <div class="template-preview-card" onclick="prepareCamera('theme-strip5')">
+                    <div class="mini-strip strip-theme-5">
+                        <div class="mini-slot">1</div>
+                        <div class="mini-slot">2</div>
+                        <div class="mini-slot">3</div>
+                    </div>
+                </div>
+
+                <div class="template-preview-card" onclick="prepareCamera('theme-strip6')">
+                    <div class="mini-strip strip-theme-6">
+                        <div class="mini-slot">1</div>
+                        <div class="mini-slot">2</div>
+                        <div class="mini-slot">3</div>
+                    </div>
+                </div>
+
+                <div class="template-preview-card" onclick="prepareCamera('theme-strip7')">
+                    <div class="mini-strip strip-theme-7">
+                        <div class="mini-slot">1</div>
+                        <div class="mini-slot">2</div>
+                        <div class="mini-slot">3</div>
+                    </div>
+                </div>
+
+                <div class="template-preview-card" onclick="prepareCamera('theme-strip8')">
+                    <div class="mini-strip strip-theme-8">
+                        <div class="mini-slot">1</div>
+                        <div class="mini-slot">2</div>
+                        <div class="mini-slot">3</div>
+                    </div>
+                </div>
+
+                <div class="template-preview-card" onclick="prepareCamera('theme-strip9')">
+                    <div class="mini-strip strip-theme-9">
+                        <div class="mini-slot">1</div>
+                        <div class="mini-slot">2</div>
+                        <div class="mini-slot">3</div>
+                    </div>
+                </div>
+
+                <div class="template-preview-card" onclick="prepareCamera('theme-strip10')">
+                    <div class="mini-strip strip-theme-10">
+                        <div class="mini-slot">1</div>
+                        <div class="mini-slot">2</div>
+                        <div class="mini-slot">3</div>
+                    </div>
+                </div>
+
+                <div class="template-preview-card" onclick="prepareCamera('theme-strip11')">
+                    <div class="mini-strip strip-theme-11">
+                        <div class="mini-slot">1</div>
+                        <div class="mini-slot">2</div>
+                        <div class="mini-slot">3</div>
+                    </div>
+                </div>
+
+                <div class="template-preview-card" onclick="prepareCamera('theme-strip12')">
+                    <div class="mini-strip strip-theme-12">
+                        <div class="mini-slot">1</div>
+                        <div class="mini-slot">2</div>
+                        <div class="mini-slot">3</div>
+                    </div>
+                </div>
+            </div>
+
+            <button class="btn btn-secondary" style="max-width: 180px; padding: 10px; font-size: 14px;" onclick="navigate('screen-home')">KEMBALI</button>
+        </div>
+
+        <div id="screen-camera" class="screen">
+            <video id="live-video" autoplay playsinline muted></video>
+            
+            <div id="photo-indicator" class="photo-indicator">FOTO 1 / 3</div>
+            <div id="countdown-text" class="countdown-text">3</div>
+
+            <div id="camera-ui" class="camera-controls">
+                <button class="btn-cam-back" onclick="stopPhotobox()">Batal</button>
+                <button class="btn-capture" onclick="startCaptureSequence()"></button>
+            </div>
+
+            <div id="flash-effect" class="flash-overlay"></div>
+            <canvas id="capture-canvas"></canvas>
+        </div>
+
+        <div id="screen-result" class="screen">
+            <h2 class="result-title">HASIL FOTO KAMU!</h2>
+            
+            <div id="final-frame" class="frame-result">
+                <div class="strip-header">VNS PHOTOBOX</div>
+                <div class="photo-slot-wrapper"><div class="photo-slot" id="slot-1"></div></div>
+                <div class="photo-slot-wrapper"><div class="photo-slot" id="slot-2"></div></div>
+                <div class="photo-slot-wrapper"><div class="photo-slot" id="slot-3"></div></div>
+                <div class="strip-footer">VNS • 2026</div>
+            </div>
+
+            <div class="result-actions">
+                <button class="btn btn-primary" onclick="navigate('screen-template')">FOTO LAGI</button>
+                <button class="btn btn-gallery" onclick="openGalleryFromResult()">GALERI</button>
+            </div>
+        </div>
+
+        <div id="screen-gallery" class="screen">
+            <h2 class="subtitle">GALERI FOTO</h2>
+            
+            <div id="gallery-container" class="gallery-container">
+                <!-- Gallery items injected dynamically -->
+            </div>
+            <div id="empty-gallery-msg" class="empty-gallery">Belum ada foto tersimpan di galeri.</div>
+
+            <button class="btn btn-secondary" style="max-width: 180px; padding: 10px; font-size: 14px; margin-top: 10px;" onclick="handleGalleryBack()">KEMBALI</button>
+        </div>
+
+        <!-- Fullscreen Detail Modal -->
+        <div id="gallery-modal" class="modal-overlay" onclick="closeModal()">
+            <div class="modal-content-wrapper" id="modal-strip-container" onclick="event.stopPropagation()">
+                <!-- Enlarged strip injected dynamically -->
+            </div>
+            <button class="btn btn-secondary" style="max-width: 160px; padding: 10px; font-size: 14px;" onclick="closeModal()">TUTUP</button>
+        </div>
+
+    </div>
+
+    <script>
+        let cameraStream = null;
+        let selectedTheme = '';
+        let capturedPhotos = [];
+        let currentPhotoIndex = 0;
+        let isSimulated = false;
+        let audioCtx = null;
+        
+        let photoGallery = JSON.parse(localStorage.getItem('vns_gallery') || '[]');
+        let openedFromScreen = 'home';
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        function playBeep() {
+            try {
+                initAudio();
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(440, audioCtx.currentTime);
+                gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.1);
+            } catch(e) {}
+        }
+
+        function playFocusBeep() {
+            try {
+                initAudio();
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(880, audioCtx.currentTime);
+                gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.15);
+            } catch(e) {}
+        }
+
+        function playCameraShutter() {
+            try {
+                initAudio();
+                const bufferSize = audioCtx.sampleRate * 0.12;
+                const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    data[i] = Math.random() * 2 - 1;
+                }
+                const noise = audioCtx.createBufferSource();
+                noise.buffer = buffer;
+
+                const filter = audioCtx.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(1200, audioCtx.currentTime);
+
+                const gain = audioCtx.createGain();
+                gain.gain.setValueAtTime(0.35, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.12);
+
+                noise.connect(filter);
+                filter.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                noise.start();
+            } catch(e) {}
+        }
+
+        function navigate(targetScreenId) {
+            document.querySelectorAll('.screen').forEach(screen => {
+                screen.classList.remove('active');
+            });
+            document.getElementById(targetScreenId).classList.add('active');
+        }
+
+        async function prepareCamera(themeClass) {
+            selectedTheme = themeClass;
+            capturedPhotos = [];
+            currentPhotoIndex = 0;
+            isSimulated = false;
+
+            navigate('screen-camera');
+            
+            document.getElementById('camera-ui').style.display = 'flex';
+            document.getElementById('photo-indicator').style.display = 'none';
+            document.getElementById('countdown-text').style.display = 'none';
+
+            const videoEl = document.getElementById('live-video');
+
+            try {
+                if (cameraStream) {
+                    cameraStream.getTracks().forEach(track => track.stop());
+                }
+
+                const constraints = {
+                    video: { 
+                        facingMode: "user",
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    },
+                    audio: false
+                };
+
+                cameraStream = await navigator.mediaDevices.getUserMedia(constraints);
+                videoEl.srcObject = cameraStream;
+                await videoEl.play();
+                videoEl.style.display = 'block';
+                document.getElementById('screen-camera').style.background = '#111';
+            } catch (error) {
+                isSimulated = true;
+                videoEl.style.display = 'none';
+                document.getElementById('screen-camera').style.background = '#444';
+            }
+        }
+
+        function stopPhotobox() {
+            if (cameraStream) {
+                cameraStream.getTracks().forEach(track => track.stop());
+                cameraStream = null;
+            }
+            navigate('screen-template');
+        }
+
+        function startCaptureSequence() {
+            document.getElementById('camera-ui').style.display = 'none';
+            document.getElementById('photo-indicator').style.display = 'block';
+            takeNextPhoto();
+        }
+
+        function takeNextPhoto() {
+            if (currentPhotoIndex >= 3) {
+                processResult();
+                return;
+            }
+
+            document.getElementById('photo-indicator').innerText = `FOTO ${currentPhotoIndex + 1} / 3`;
+
+            let countdown = 3;
+            const cdText = document.getElementById('countdown-text');
+            cdText.style.display = 'block';
+            cdText.style.animation = 'none';
+            cdText.offsetHeight; 
+            cdText.style.animation = 'popIn 1s infinite';
+            cdText.innerText = countdown;
+
+            playBeep();
+
+            const timer = setInterval(() => {
+                countdown--;
+                if (countdown > 1) {
+                    cdText.innerText = countdown;
+                    playBeep();
+                } else if (countdown === 1) {
+                    cdText.innerText = countdown;
+                    playFocusBeep();
+                } else {
+                    clearInterval(timer);
+                    cdText.style.display = 'none';
+                    
+                    playCameraShutter();
+                    snapAndSaveFrame();
+                    
+                    currentPhotoIndex++;
+                    
+                    if (currentPhotoIndex < 3) {
+                        setTimeout(() => {
+                            takeNextPhoto();
+                        }, 2000);
+                    } else {
+                        setTimeout(() => {
+                            processResult();
+                        }, 1000);
+                    }
+                }
+            }, 1000);
+        }
+
+        function snapAndSaveFrame() {
+            const flash = document.getElementById('flash-effect');
+            flash.style.opacity = '1';
+            setTimeout(() => { flash.style.opacity = '0'; }, 150);
+
+            let dataUrl = "";
+            const videoEl = document.getElementById('live-video');
+
+            if (!isSimulated && videoEl.readyState === videoEl.HAVE_ENOUGH_DATA) {
+                const canvas = document.getElementById('capture-canvas');
+                const context = canvas.getContext('2d');
+                
+                canvas.width = videoEl.videoWidth || 640;
+                canvas.height = videoEl.videoHeight || 480;
+                
+                context.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
+                dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+            } else {
+                const colors = ['#ff5722', '#00bcd4', '#8bc34a'];
+                dataUrl = `https://placehold.co/600x450/${colors[currentPhotoIndex].replace('#','')}/ffffff?text=FOTO+${currentPhotoIndex+1}`;
+            }
+
+            capturedPhotos.push(dataUrl);
+        }
+
+        function processResult() {
+            if (cameraStream) {
+                cameraStream.getTracks().forEach(track => track.stop());
+                cameraStream = null;
+            }
+            
+            document.getElementById('photo-indicator').style.display = 'none';
+
+            const finalFrame = document.getElementById('final-frame');
+            finalFrame.className = `frame-result ${selectedTheme}`;
+
+            for (let i = 0; i < 3; i++) {
+                const slot = document.getElementById(`slot-${i + 1}`);
+                if (capturedPhotos[i]) {
+                    slot.style.backgroundImage = `url(${capturedPhotos[i]})`;
+                }
+            }
+
+            const stripRecord = {
+                theme: selectedTheme,
+                photos: [...capturedPhotos],
+                date: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
+            };
+
+            photoGallery.unshift(stripRecord);
+            if (photoGallery.length > 25) photoGallery.pop();
+            localStorage.setItem('vns_gallery', JSON.stringify(photoGallery));
+
+            navigate('screen-result');
+        }
+
+        function openGalleryFromHome() {
+            openedFromScreen = 'home';
+            renderGallery();
+        }
+
+        function openGalleryFromResult() {
+            openedFromScreen = 'result';
+            renderGallery();
+        }
+
+        function renderGallery() {
+            photoGallery = JSON.parse(localStorage.getItem('vns_gallery') || '[]');
+            
+            const container = document.getElementById('gallery-container');
+            const emptyMsg = document.getElementById('empty-gallery-msg');
+            container.innerHTML = '';
+
+            if (photoGallery.length === 0) {
+                emptyMsg.style.display = 'block';
+            } else {
+                emptyMsg.style.display = 'none';
+                photoGallery.forEach((item) => {
+                    const div = document.createElement('div');
+                    div.className = `frame-result gallery-item ${item.theme}`;
+                    div.style.transform = 'scale(1)';
+                    div.style.margin = '0';
+                    
+                    div.innerHTML = `
+                        <div class="strip-header" style="font-size:10px; padding:4px 0;">VNS PHOTOBOX</div>
+                        <div class="photo-slot-wrapper"><div class="photo-slot" style="background-image: url(${item.photos[0]})"></div></div>
+                        <div class="photo-slot-wrapper"><div class="photo-slot" style="background-image: url(${item.photos[1]})"></div></div>
+                        <div class="photo-slot-wrapper"><div class="photo-slot" style="background-image: url(${item.photos[2]})"></div></div>
+                        <div class="strip-footer" style="font-size:8px; padding:3px 0;">${item.date}</div>
+                    `;
+
+                    div.onclick = () => showGalleryDetail(item);
+                    container.appendChild(div);
+                });
+            }
+
+            navigate('screen-gallery');
+        }
+
+        function showGalleryDetail(item) {
+            const modalContainer = document.getElementById('modal-strip-container');
+            modalContainer.innerHTML = `
+                <div class="frame-result ${item.theme}" style="width: 210px;">
+                    <div class="strip-header">VNS PHOTOBOX</div>
+                    <div class="photo-slot-wrapper"><div class="photo-slot" style="background-image: url(${item.photos[0]})"></div></div>
+                    <div class="photo-slot-wrapper"><div class="photo-slot" style="background-image: url(${item.photos[1]})"></div></div>
+                    <div class="photo-slot-wrapper"><div class="photo-slot" style="background-image: url(${item.photos[2]})"></div></div>
+                    <div class="strip-footer">${item.date}</div>
+                </div>
+            `;
+            document.getElementById('gallery-modal').classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('gallery-modal').classList.remove('active');
+        }
+
+        function handleGalleryBack() {
+            if (openedFromScreen === 'result') {
+                navigate('screen-result');
+            } else {
+                navigate('screen-home');
+            }
+        }
+    </script>
+</body>
+</html>
+```
