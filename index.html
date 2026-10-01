@@ -148,7 +148,7 @@
         .btn-secondary { color: #ff5722; background: rgba(255,255,255,0.9); flex-shrink: 0; }
         .btn-download { color: #e91e63; background: #ffffff; }
 
-        /* --- TEMPLATE SCREEN --- */
+        /* --- TEMPLATE SCREEN (Fixed Title & Footer, Scrollable Grid) --- */
         #screen-template {
             background: linear-gradient(135deg, #1a1a2e, #16213e, #0f3460);
             justify-content: space-between;
@@ -827,9 +827,9 @@
             </div>
         </div>
 
-        <!-- TEMPLATE SCREEN -->
+        <!-- TEMPLATE SCREEN (Fixed Title & Footer, Scrollable Grid) -->
         <div id="screen-template" class="screen">
-            <h2 class="subtitle">PILIH TEMPLATE STRIP</h2>
+            <h2 class="subtitle">PILIH TEMPLATE</h2>
             
             <div class="template-scroll-area">
                 <div class="template-grid">
@@ -1027,7 +1027,6 @@
         let openedFromScreen = 'home';
         let currentFilter = 'normal';
 
-        // Pendaftaran Service Worker untuk PWA / Install APK
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('sw.js').catch(() => {});
