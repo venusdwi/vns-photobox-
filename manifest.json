@@ -1,17 +1,15 @@
 {
   "name": "POTOBOK EUY!",
-  "short_name": "Potobok Euy",
+  "short_name": "Potobok",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#ff007f",
-  "orientation": "portrait",
   "icons": [
     {
       "src": "./icon.png",
       "sizes": "192x192 512x512",
-      "type": "image/png",
-      "purpose": "any"
+      "type": "image/png"
     }
   ]
 }
