@@ -237,17 +237,20 @@
             box-shadow: 0 8px 20px rgba(0,0,0,0.3);
         }
 
+        /* Warna khusus slot sesuai permintaan: Foto 1 Merah, Foto 2 Ijo, Foto 3 Biru */
+        .mini-slot-1 { background: #ff4d4d !important; color: #fff !important; }
+        .mini-slot-2 { background: #2ecc71 !important; color: #fff !important; }
+        .mini-slot-3 { background: #3498db !important; color: #fff !important; }
+
         .mini-slot {
             width: 100%;
             flex: 1;
-            background: #ffffff;
             border-radius: 4px;
             display: flex;
             justify-content: center;
             align-items: center;
             font-family: 'Fredoka One', cursive;
             font-size: 13px;
-            color: #444;
         }
 
         /* --- 18 TEMPLATE STYLES --- */
@@ -319,7 +322,6 @@
             display: none;
         }
 
-        /* Kotak Pratinjau Live View Default (3 Foto: Landscape 4:3) */
         .camera-view-container {
             position: relative;
             width: 85%;
@@ -336,7 +338,6 @@
             transition: aspect-ratio 0.3s ease;
         }
 
-        /* Kotak Pratinjau Live View saat 2 Foto (Potret Vertikal 3:4) */
         .camera-view-container.portrait-mode {
             aspect-ratio: 3 / 4;
             max-width: 270px;
@@ -478,7 +479,7 @@
         .photo-slot-wrapper-2photo {
             position: relative;
             width: 100%;
-            aspect-ratio: 3 / 4; /* Potret Vertikal */
+            aspect-ratio: 3 / 4;
             box-sizing: border-box;
         }
 
@@ -596,26 +597,26 @@
             <div class="template-scroll-area">
                 <div class="template-grid">
                     <!-- 12 Template 3 Foto -->
-                    <div class="template-preview-card" onclick="prepareCamera('strip-theme-1', 3)"><div class="mini-strip strip-theme-1"><div class="mini-slot">1</div><div class="mini-slot">2</div><div class="mini-slot">3</div></div></div>
-                    <div class="template-preview-card" onclick="prepareCamera('strip-theme-2', 3)"><div class="mini-strip strip-theme-2"><div class="mini-slot">1</div><div class="mini-slot">2</div><div class="mini-slot">3</div></div></div>
-                    <div class="template-preview-card" onclick="prepareCamera('strip-theme-3', 3)"><div class="mini-strip strip-theme-3"><div class="mini-slot">1</div><div class="mini-slot">2</div><div class="mini-slot">3</div></div></div>
-                    <div class="template-preview-card" onclick="prepareCamera('strip-theme-4', 3)"><div class="mini-strip strip-theme-4"><div class="mini-slot">1</div><div class="mini-slot">2</div><div class="mini-slot">3</div></div></div>
-                    <div class="template-preview-card" onclick="prepareCamera('strip-theme-5', 3)"><div class="mini-strip strip-theme-5"><div class="mini-slot">1</div><div class="mini-slot">2</div><div class="mini-slot">3</div></div></div>
-                    <div class="template-preview-card" onclick="prepareCamera('strip-theme-6', 3)"><div class="mini-strip strip-theme-6"><div class="mini-slot">1</div><div class="mini-slot">2</div><div class="mini-slot">3</div></div></div>
-                    <div class="template-preview-card" onclick="prepareCamera('strip-theme-7', 3)"><div class="mini-strip strip-theme-7"><div class="mini-slot">1</div><div class="mini-slot">2</div><div class="mini-slot">3</div></div></div>
-                    <div class="template-preview-card" onclick="prepareCamera('strip-theme-8', 3)"><div class="mini-strip strip-theme-8"><div class="mini-slot">1</div><div class="mini-slot">2</div><div class="mini-slot">3</div></div></div>
-                    <div class="template-preview-card" onclick="prepareCamera('strip-theme-9', 3)"><div class="mini-strip strip-theme-9"><div class="mini-slot">1</div><div class="mini-slot">2</div><div class="mini-slot">3</div></div></div>
-                    <div class="template-preview-card" onclick="prepareCamera('strip-theme-10', 3)"><div class="mini-strip strip-theme-10"><div class="mini-slot">1</div><div class="mini-slot">2</div><div class="mini-slot">3</div></div></div>
-                    <div class="template-preview-card" onclick="prepareCamera('strip-theme-11', 3)"><div class="mini-strip strip-theme-11"><div class="mini-slot">1</div><div class="mini-slot">2</div><div class="mini-slot">3</div></div></div>
-                    <div class="template-preview-card" onclick="prepareCamera('strip-theme-12', 3)"><div class="mini-strip strip-theme-12"><div class="mini-slot">1</div><div class="mini-slot">2</div><div class="mini-slot">3</div></div></div>
+                    <div class="template-preview-card" onclick="prepareCamera('strip-theme-1', 3)"><div class="mini-strip strip-theme-1"><div class="mini-slot mini-slot-1">1</div><div class="mini-slot mini-slot-2">2</div><div class="mini-slot mini-slot-3">3</div></div></div>
+                    <div class="template-preview-card" onclick="prepareCamera('strip-theme-2', 3)"><div class="mini-strip strip-theme-2"><div class="mini-slot mini-slot-1">1</div><div class="mini-slot mini-slot-2">2</div><div class="mini-slot mini-slot-3">3</div></div></div>
+                    <div class="template-preview-card" onclick="prepareCamera('strip-theme-3', 3)"><div class="mini-strip strip-theme-3"><div class="mini-slot mini-slot-1">1</div><div class="mini-slot mini-slot-2">2</div><div class="mini-slot mini-slot-3">3</div></div></div>
+                    <div class="template-preview-card" onclick="prepareCamera('strip-theme-4', 3)"><div class="mini-strip strip-theme-4"><div class="mini-slot mini-slot-1">1</div><div class="mini-slot mini-slot-2">2</div><div class="mini-slot mini-slot-3">3</div></div></div>
+                    <div class="template-preview-card" onclick="prepareCamera('strip-theme-5', 3)"><div class="mini-strip strip-theme-5"><div class="mini-slot mini-slot-1">1</div><div class="mini-slot mini-slot-2">2</div><div class="mini-slot mini-slot-3">3</div></div></div>
+                    <div class="template-preview-card" onclick="prepareCamera('strip-theme-6', 3)"><div class="mini-strip strip-theme-6"><div class="mini-slot mini-slot-1">1</div><div class="mini-slot mini-slot-2">2</div><div class="mini-slot mini-slot-3">3</div></div></div>
+                    <div class="template-preview-card" onclick="prepareCamera('strip-theme-7', 3)"><div class="mini-strip strip-theme-7"><div class="mini-slot mini-slot-1">1</div><div class="mini-slot mini-slot-2">2</div><div class="mini-slot mini-slot-3">3</div></div></div>
+                    <div class="template-preview-card" onclick="prepareCamera('strip-theme-8', 3)"><div class="mini-strip strip-theme-8"><div class="mini-slot mini-slot-1">1</div><div class="mini-slot mini-slot-2">2</div><div class="mini-slot mini-slot-3">3</div></div></div>
+                    <div class="template-preview-card" onclick="prepareCamera('strip-theme-9', 3)"><div class="mini-strip strip-theme-9"><div class="mini-slot mini-slot-1">1</div><div class="mini-slot mini-slot-2">2</div><div class="mini-slot mini-slot-3">3</div></div></div>
+                    <div class="template-preview-card" onclick="prepareCamera('strip-theme-10', 3)"><div class="mini-strip strip-theme-10"><div class="mini-slot mini-slot-1">1</div><div class="mini-slot mini-slot-2">2</div><div class="mini-slot mini-slot-3">3</div></div></div>
+                    <div class="template-preview-card" onclick="prepareCamera('strip-theme-11', 3)"><div class="mini-strip strip-theme-11"><div class="mini-slot mini-slot-1">1</div><div class="mini-slot mini-slot-2">2</div><div class="mini-slot mini-slot-3">3</div></div></div>
+                    <div class="template-preview-card" onclick="prepareCamera('strip-theme-12', 3)"><div class="mini-strip strip-theme-12"><div class="mini-slot mini-slot-1">1</div><div class="mini-slot mini-slot-2">2</div><div class="mini-slot mini-slot-3">3</div></div></div>
 
                     <!-- 6 Tema Baru (2 Foto Potrait Vertikal) -->
-                    <div class="template-preview-card" onclick="prepareCamera('strip-theme-13', 2)"><div class="mini-strip strip-theme-13"><div class="mini-slot">1</div><div class="mini-slot">2</div></div></div>
-                    <div class="template-preview-card" onclick="prepareCamera('strip-theme-14', 2)"><div class="mini-strip strip-theme-14"><div class="mini-slot">1</div><div class="mini-slot">2</div></div></div>
-                    <div class="template-preview-card" onclick="prepareCamera('strip-theme-15', 2)"><div class="mini-strip strip-theme-15"><div class="mini-slot">1</div><div class="mini-slot">2</div></div></div>
-                    <div class="template-preview-card" onclick="prepareCamera('strip-theme-16', 2)"><div class="mini-strip strip-theme-16"><div class="mini-slot">1</div><div class="mini-slot">2</div></div></div>
-                    <div class="template-preview-card" onclick="prepareCamera('strip-theme-17', 2)"><div class="mini-strip strip-theme-17"><div class="mini-slot">1</div><div class="mini-slot">2</div></div></div>
-                    <div class="template-preview-card" onclick="prepareCamera('strip-theme-18', 2)"><div class="mini-strip strip-theme-18"><div class="mini-slot">1</div><div class="mini-slot">2</div></div></div>
+                    <div class="template-preview-card" onclick="prepareCamera('strip-theme-13', 2)"><div class="mini-strip strip-theme-13"><div class="mini-slot mini-slot-1">1</div><div class="mini-slot mini-slot-2">2</div></div></div>
+                    <div class="template-preview-card" onclick="prepareCamera('strip-theme-14', 2)"><div class="mini-strip strip-theme-14"><div class="mini-slot mini-slot-1">1</div><div class="mini-slot mini-slot-2">2</div></div></div>
+                    <div class="template-preview-card" onclick="prepareCamera('strip-theme-15', 2)"><div class="mini-strip strip-theme-15"><div class="mini-slot mini-slot-1">1</div><div class="mini-slot mini-slot-2">2</div></div></div>
+                    <div class="template-preview-card" onclick="prepareCamera('strip-theme-16', 2)"><div class="mini-strip strip-theme-16"><div class="mini-slot mini-slot-1">1</div><div class="mini-slot mini-slot-2">2</div></div></div>
+                    <div class="template-preview-card" onclick="prepareCamera('strip-theme-17', 2)"><div class="mini-strip strip-theme-17"><div class="mini-slot mini-slot-1">1</div><div class="mini-slot mini-slot-2">2</div></div></div>
+                    <div class="template-preview-card" onclick="prepareCamera('strip-theme-18', 2)"><div class="mini-strip strip-theme-18"><div class="mini-slot mini-slot-1">1</div><div class="mini-slot mini-slot-2">2</div></div></div>
                 </div>
             </div>
 
@@ -627,7 +628,6 @@
             <div class="camera-top-title">POTOBOK EUY!</div>
             <div id="photo-indicator" class="photo-indicator">FOTO 1 / 3</div>
 
-            <!-- Kotak Live View Kamera (Otomatis Menyesuaikan Bentuk Landscape/Potret) -->
             <div id="camera-view-box" class="camera-view-container">
                 <video id="live-video" autoplay playsinline muted></video>
                 <div id="captured-preview-box"></div>
@@ -825,7 +825,6 @@
             currentPhotoIndex = 0;
             isSimulated = false;
             
-            // Atur bentuk kotak live view kamera otomatis berdasarkan jumlah foto template
             const cameraBox = document.getElementById('camera-view-box');
             if (totalPhotosRequired === 2) {
                 cameraBox.classList.add('portrait-mode');
@@ -904,7 +903,6 @@
                 const context = canvas.getContext('2d');
                 const vWidth = videoEl.videoWidth, vHeight = videoEl.videoHeight;
                 
-                // Menyesuaikan rasio crop canvas sesuai mode (2 foto = potret 3:4, 3 foto = landscape 4:3)
                 let targetAspect = (totalPhotosRequired === 2) ? (3 / 4) : (4 / 3);
                 let sWidth = vWidth, sHeight = vWidth / targetAspect, sx = 0, sy = (vHeight - sHeight) / 2;
                 if (sHeight > vHeight) { sHeight = vHeight; sWidth = vHeight * targetAspect; sx = (vWidth - sWidth) / 2; sy = 0; }
