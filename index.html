@@ -80,18 +80,28 @@
             100% { background-position: 0% 50%; }
         }
 
+        /* Animasi Masuk & Pergeseran Judul ke Atas */
         .main-title {
             font-family: 'Fredoka One', cursive;
-            font-size: 44px;
+            font-size: 42px;
             color: #ffffff;
             text-align: center;
             line-height: 1.1;
             letter-spacing: 2px;
             text-shadow: -3px 3px 0px #ff007f, -5px 5px 0px #00e5ff, 0 10px 25px rgba(0,0,0,0.3);
+            transform: translateY(-20px);
+            animation: bounceInTitle 1.2s cubic-bezier(0.68, -0.55, 0.27, 1.55) both;
         }
 
+        @keyframes bounceInTitle {
+            0% { transform: translateY(-50px) scale(0); opacity: 0; }
+            60% { transform: translateY(-15px) scale(1.08); opacity: 1; }
+            100% { transform: translateY(-20px) scale(1); opacity: 1; }
+        }
+
+        /* Animasi Logo Kamera (Flash Kedip & Float) */
         .camera-icon-wrapper {
-            background: rgba(255, 255, 255, 0.9);
+            background: rgba(255, 255, 255, 0.95);
             backdrop-filter: blur(10px);
             width: 100px;
             height: 100px;
@@ -99,20 +109,36 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            box-shadow: 0 15px 35px rgba(0,0,0,0.2);
-            animation: float 3s ease-in-out infinite;
+            box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.8), 0 15px 35px rgba(0,0,0,0.2);
+            animation: floatAndFlash 2s infinite ease-in-out;
+            transform: translateY(-10px);
         }
 
-        @keyframes float {
-            0% { transform: translateY(0px); }
-            50% { transform: translateY(-8px); }
-            100% { transform: translateY(0px); }
+        @keyframes floatAndFlash {
+            0% {
+                transform: translateY(0px) scale(1);
+                box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.9), 0 15px 35px rgba(0,0,0,0.2);
+            }
+            50% {
+                transform: translateY(-6px) scale(1.03);
+                box-shadow: 0 0 0 20px rgba(255, 255, 255, 0), 0 15px 35px rgba(0,0,0,0.2);
+            }
+            100% {
+                transform: translateY(0px) scale(1);
+                box-shadow: 0 0 0 0 rgba(255, 255, 255, 0), 0 15px 35px rgba(0,0,0,0.2);
+            }
         }
 
         .camera-icon-wrapper svg { 
             color: #ff007f; 
             width: 50px; 
             height: 50px; 
+            animation: cameraBlink 2s infinite;
+        }
+
+        @keyframes cameraBlink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
         }
 
         .home-buttons-container {
@@ -122,6 +148,7 @@
             width: 100%;
             max-width: 280px;
             align-items: center;
+            transform: translateY(-5px);
         }
 
         .btn {
@@ -145,7 +172,7 @@
         .btn:active { transform: scale(0.95); }
         .btn-primary { color: #6a0dad; }
         .btn-gallery { color: #00897b; background: rgba(255,255,255,0.95); }
-        .btn-install { color: #ffffff; background: #ff007f; display: none; } /* Tombol instal otomatis muncul jika didukung */
+        .btn-install { color: #ffffff; background: #ff007f; display: none; }
         .btn-secondary { color: #ff5722; background: rgba(255,255,255,0.9); flex-shrink: 0; }
         .btn-download { color: #e91e63; background: #ffffff; }
 
@@ -693,6 +720,19 @@
             if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             if (audioCtx.state === 'suspended') audioCtx.resume();
         }
+
+        // --- Fitur Suara Lucu saat Halaman Dimuat ---
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                if ('speechSynthesis' in window) {
+                    const utterance = new SpeechSynthesisUtterance("Potobox Euy!");
+                    utterance.lang = 'id-ID';
+                    utterance.pitch = 1.6; // Nada tinggi agar lucu / imut
+                    utterance.rate = 1.1;  // Sedikit cepat
+                    window.speechSynthesis.speak(utterance);
+                }
+            }, 600);
+        });
 
         function playBeep() {
             try {
