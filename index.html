@@ -237,7 +237,6 @@
             box-shadow: 0 8px 20px rgba(0,0,0,0.3);
         }
 
-        /* Warna khusus slot sesuai permintaan: Foto 1 Merah, Foto 2 Ijo, Foto 3 Biru */
         .mini-slot-1 { background: #ff4d4d !important; color: #fff !important; }
         .mini-slot-2 { background: #2ecc71 !important; color: #fff !important; }
         .mini-slot-3 { background: #3498db !important; color: #fff !important; }
@@ -754,17 +753,28 @@
             if (audioCtx.state === 'suspended') audioCtx.resume();
         }
 
+        // Fungsi untuk memutar suara ucapan "Potobox Euy!"
+        function speakWelcome() {
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel(); // Batalkan antrean sebelumnya agar langsung ngomong
+                const utterance = new SpeechSynthesisUtterance("Potobox Euy!");
+                utterance.lang = 'id-ID';
+                utterance.pitch = 1.6; // Nada tinggi agar lucu / imut
+                utterance.rate = 1.1;  // Sedikit cepat
+                window.speechSynthesis.speak(utterance);
+            }
+        }
+
+        // Jalankan suara saat halaman dimuat & antisipasi blokir browser dengan interaksi sentuh pertama di layar
         window.addEventListener('load', () => {
-            setTimeout(() => {
-                if ('speechSynthesis' in window) {
-                    const utterance = new SpeechSynthesisUtterance("Potobox Euy!");
-                    utterance.lang = 'id-ID';
-                    utterance.pitch = 1.6;
-                    utterance.rate = 1.1;
-                    window.speechSynthesis.speak(utterance);
-                }
-            }, 600);
+            setTimeout(speakWelcome, 500);
         });
+
+        // Jika browser memblokir autoplay pertama, suara akan otomatis bersuara saat pengguna menyentuh layar pertama kali
+        document.body.addEventListener('click', function initAudioOnTouch() {
+            speakWelcome();
+            document.body.removeEventListener('click', initAudioOnTouch);
+        }, { once: true });
 
         function playBeep() {
             try {
