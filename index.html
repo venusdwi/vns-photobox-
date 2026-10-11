@@ -264,7 +264,6 @@
         .strip-theme-11 { background: linear-gradient(135deg, #f8bbd0, #e91e63); padding: 8px; gap: 5px; border: 2px solid #c2185b; border-radius: 10px; }
         .strip-theme-12 { background: linear-gradient(135deg, #dcedc8, #689f38); padding: 8px; gap: 5px; border: 2px solid #33691e; border-radius: 10px; }
 
-        /* 6 Tema Baru: Ukuran sama panjang (strip vertikal), 2 foto dengan slot potret */
         .strip-theme-13 { background: #ffe600; background-image: radial-gradient(#ff007f 15%, transparent 16%), radial-gradient(#ff007f 15%, transparent 16%); background-size: 20px 20px; background-position: 0 0, 10px 10px; padding: 8px; gap: 6px; border: 3px solid #ff007f; border-radius: 12px; }
         .strip-theme-14 { background: #111111; padding: 8px; gap: 6px; border: 3px solid #ffea00; border-radius: 4px; box-shadow: inset 0 0 15px rgba(255,234,0,0.3); }
         .strip-theme-15 { background: linear-gradient(135deg, #00f2fe, #4facfe, #fa709a); padding: 8px; gap: 6px; border: 3px solid #ffffff; border-radius: 16px; }
@@ -320,6 +319,7 @@
             display: none;
         }
 
+        /* Kotak Pratinjau Live View Default (3 Foto: Landscape 4:3) */
         .camera-view-container {
             position: relative;
             width: 85%;
@@ -333,6 +333,13 @@
             display: flex;
             justify-content: center;
             align-items: center;
+            transition: aspect-ratio 0.3s ease;
+        }
+
+        /* Kotak Pratinjau Live View saat 2 Foto (Potret Vertikal 3:4) */
+        .camera-view-container.portrait-mode {
+            aspect-ratio: 3 / 4;
+            max-width: 270px;
         }
 
         #live-video {
@@ -468,11 +475,10 @@
         .photo-slot-wrapper { position: relative; width: 100%; aspect-ratio: 4 / 3; box-sizing: border-box; }
         .photo-slot { width: 100%; height: 100%; background-size: cover; background-position: center; transform: scaleX(-1); position: relative; }
         
-        /* Slot khusus untuk 2 foto potret vertikal agar ukurannya proporsional memenuhi tinggi strip */
         .photo-slot-wrapper-2photo {
             position: relative;
             width: 100%;
-            aspect-ratio: 3 / 4; /* Potret vertikal */
+            aspect-ratio: 3 / 4; /* Potret Vertikal */
             box-sizing: border-box;
         }
 
@@ -603,7 +609,7 @@
                     <div class="template-preview-card" onclick="prepareCamera('strip-theme-11', 3)"><div class="mini-strip strip-theme-11"><div class="mini-slot">1</div><div class="mini-slot">2</div><div class="mini-slot">3</div></div></div>
                     <div class="template-preview-card" onclick="prepareCamera('strip-theme-12', 3)"><div class="mini-strip strip-theme-12"><div class="mini-slot">1</div><div class="mini-slot">2</div><div class="mini-slot">3</div></div></div>
 
-                    <!-- 6 Tema Baru (2 Foto Potrait dengan Ukuran Strip Sama Panjang) -->
+                    <!-- 6 Tema Baru (2 Foto Potrait Vertikal) -->
                     <div class="template-preview-card" onclick="prepareCamera('strip-theme-13', 2)"><div class="mini-strip strip-theme-13"><div class="mini-slot">1</div><div class="mini-slot">2</div></div></div>
                     <div class="template-preview-card" onclick="prepareCamera('strip-theme-14', 2)"><div class="mini-strip strip-theme-14"><div class="mini-slot">1</div><div class="mini-slot">2</div></div></div>
                     <div class="template-preview-card" onclick="prepareCamera('strip-theme-15', 2)"><div class="mini-strip strip-theme-15"><div class="mini-slot">1</div><div class="mini-slot">2</div></div></div>
@@ -621,7 +627,8 @@
             <div class="camera-top-title">POTOBOK EUY!</div>
             <div id="photo-indicator" class="photo-indicator">FOTO 1 / 3</div>
 
-            <div class="camera-view-container">
+            <!-- Kotak Live View Kamera (Otomatis Menyesuaikan Bentuk Landscape/Potret) -->
+            <div id="camera-view-box" class="camera-view-container">
                 <video id="live-video" autoplay playsinline muted></video>
                 <div id="captured-preview-box"></div>
             </div>
@@ -817,6 +824,15 @@
             capturedPhotos = [];
             currentPhotoIndex = 0;
             isSimulated = false;
+            
+            // Atur bentuk kotak live view kamera otomatis berdasarkan jumlah foto template
+            const cameraBox = document.getElementById('camera-view-box');
+            if (totalPhotosRequired === 2) {
+                cameraBox.classList.add('portrait-mode');
+            } else {
+                cameraBox.classList.remove('portrait-mode');
+            }
+
             navigate('screen-camera');
             document.getElementById('camera-ui').style.display = 'flex';
             document.getElementById('photo-indicator').style.display = 'none';
@@ -887,9 +903,14 @@
                 const canvas = document.getElementById('capture-canvas');
                 const context = canvas.getContext('2d');
                 const vWidth = videoEl.videoWidth, vHeight = videoEl.videoHeight;
-                let sWidth = vWidth, sHeight = vWidth * (3 / 4), sx = 0, sy = (vHeight - sHeight) / 2;
-                if (sHeight > vHeight) { sHeight = vHeight; sWidth = vHeight * (4 / 3); sx = (vWidth - sWidth) / 2; sy = 0; }
-                canvas.width = 640; canvas.height = 480;
+                
+                // Menyesuaikan rasio crop canvas sesuai mode (2 foto = potret 3:4, 3 foto = landscape 4:3)
+                let targetAspect = (totalPhotosRequired === 2) ? (3 / 4) : (4 / 3);
+                let sWidth = vWidth, sHeight = vWidth / targetAspect, sx = 0, sy = (vHeight - sHeight) / 2;
+                if (sHeight > vHeight) { sHeight = vHeight; sWidth = vHeight * targetAspect; sx = (vWidth - sWidth) / 2; sy = 0; }
+                
+                canvas.width = (totalPhotosRequired === 2) ? 480 : 640;
+                canvas.height = (totalPhotosRequired === 2) ? 640 : 480;
                 context.drawImage(videoEl, sx, sy, sWidth, sHeight, 0, 0, canvas.width, canvas.height);
                 dataUrl = canvas.toDataURL('image/jpeg', 0.85);
             } else {
