@@ -897,7 +897,7 @@
             }
         }
 
-        // Fungsi khusus untuk merekam elemen HTML Live Photo menjadi file Video (.webm) bergerak
+        // Perbaikan skala rendering html2canvas agar pas 100% tanpa ngezoom / terpotong
         function downloadLiveStripVideo() {
             const btnDownload = document.getElementById('btn-download-live');
             btnDownload.innerText = "Merekam Video...";
@@ -906,9 +906,8 @@
 
             const element = document.getElementById('active-live-strip-element');
             
-            // Menggunakan html2canvas berulang untuk menghasilkan stream video bergerak
-            html2canvas(element, { scale: 2, useCORS: true, backgroundColor: null }).then(firstCanvas => {
-                const stream = firstCanvas.captureStream(15); // 15 fps
+            html2canvas(element, { scale: 1, useCORS: true, backgroundColor: null, logging: false }).then(firstCanvas => {
+                const stream = firstCanvas.captureStream(15);
                 let recordedChunks = [];
                 let mediaRecorder;
 
@@ -943,9 +942,8 @@
 
                 mediaRecorder.start();
 
-                // Ambil snapshot berulang kali selama 2.5 detik untuk merekam animasi putar mundur
                 let recordInterval = setInterval(() => {
-                    html2canvas(element, { scale: 2, useCORS: true, backgroundColor: null }).then(canvas => {
+                    html2canvas(element, { scale: 1, useCORS: true, backgroundColor: null, logging: false }).then(canvas => {
                         let ctx = firstCanvas.getContext('2d');
                         ctx.clearRect(0, 0, firstCanvas.width, firstCanvas.height);
                         ctx.drawImage(canvas, 0, 0, firstCanvas.width, firstCanvas.height);
