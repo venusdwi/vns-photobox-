@@ -281,7 +281,7 @@
         .photo-slot-wrapper { position: relative; width: 100%; aspect-ratio: 4 / 3; box-sizing: border-box; }
         .photo-slot { width: 100%; height: 100%; background-size: cover; background-position: center; transform: scaleX(-1); position: relative; }
         
-        /* Video Live Photo (tidak mirror, ukuran dan posisi sama persis dengan foto asli) */
+        /* Slot Video Live Photo (mirror disamakan dengan foto asli) */
         .live-slot-video {
             width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); position: relative; display: block;
         }
@@ -555,7 +555,6 @@
         let currentPhotoIndex = 0;
         let isSimulated = false;
         let audioCtx = null;
-        let activeBoomerangIntervals = [];
         let photoGallery = JSON.parse(localStorage.getItem('potobok_gallery') || '[]');
         let openedFromScreen = 'home';
         let currentFilter = 'normal';
@@ -749,7 +748,7 @@
             flash.style.opacity = '1';
             setTimeout(() => { flash.style.opacity = '0'; }, 150);
 
-            // Merekam video langsung dari cameraStream agar handal di semua HP
+            // Merekam video 2 detik secara andal menggunakan MediaRecorder
             if (!isSimulated && cameraStream) {
                 try {
                     let localChunks = [];
@@ -851,29 +850,24 @@
             navigate('screen-result');
         }
 
-        // Live Photo Modal: Memastikan video/fallback foto berjalan dinamis sesuai template
+        // Live Photo Modal: Memastikan strip template 2 atau 3 foto tampil sama persis dengan video pemutaran maju (loop)
         function playLivePhotoModal() {
             renderLiveStripContainer(selectedTheme, totalPhotosRequired, currentLiveVideoUrls, capturedPhotos, currentFilter, 'live-modal-strip-wrapper');
             document.getElementById('live-player-modal').classList.add('active');
         }
 
         function closeLiveModal() {
-            activeBoomerangIntervals.forEach(interval => clearInterval(interval));
-            activeBoomerangIntervals = [];
             document.querySelectorAll('.live-slot-video').forEach(v => v.pause());
             document.getElementById('live-player-modal').classList.remove('active');
         }
 
         function renderLiveStripContainer(themeClass, pCount, videoUrls, photoUrls, filterType, containerId) {
-            activeBoomerangIntervals.forEach(interval => clearInterval(interval));
-            activeBoomerangIntervals = [];
-
             let slotClass = (pCount === 2) ? 'photo-slot-wrapper-2photo' : 'photo-slot-wrapper';
             let filterStyle = getFilterCss(filterType);
 
             let slotsHTML = '';
             for (let i = 0; i < pCount; i++) {
-                let vUrl = videoUrls[i];
+                let vUrl = videoUrls[i] || videoUrls[0];
                 let pUrl = photoUrls[i] || photoUrls[0];
                 
                 if (vUrl) {
@@ -883,10 +877,9 @@
                         </div>
                     `;
                 } else {
-                    // Fallback jika video gagal direkam: menggunakan background foto dengan animasi pulsa/zoom boomerang lembut
                     slotsHTML += `
                         <div class="${slotClass}">
-                            <div class="photo-slot fallback-animated-slot" style="background-image: url(${pUrl}); filter: ${filterStyle}; animation: fallbackZoom 2s ease-in-out infinite alternate;"></div>
+                            <div class="photo-slot" style="background-image: url(${pUrl}); filter: ${filterStyle};"></div>
                         </div>
                     `;
                 }
@@ -900,35 +893,6 @@
                     <div class="strip-footer">EUY • 2026</div>
                 </div>
             `;
-
-            // Style tambahan untuk animasi fallback jika video tidak ada
-            if (!document.getElementById('fallback-anim-style')) {
-                const styleEl = document.createElement('style');
-                styleEl.id = 'fallback-anim-style';
-                styleEl.innerHTML = `@keyframes fallbackZoom { 0% { transform: scaleX(-1) scale(1); } 100% { transform: scaleX(-1) scale(1.06); } }`;
-                document.head.appendChild(styleEl);
-            }
-
-            // Pemutaran video boomerang mundur-maju otomatis
-            const videoElements = container.querySelectorAll('.live-slot-video');
-            videoElements.forEach((videoEl) => {
-                videoEl.onloadedmetadata = () => {
-                    videoEl.currentTime = videoEl.duration;
-                    videoEl.playbackRate = -1.2;
-                    videoEl.play().catch(() => {});
-
-                    let interval = setInterval(() => {
-                        if (videoEl.playbackRate < 0 && videoEl.currentTime <= 0.1) {
-                            videoEl.playbackRate = 1.2;
-                            videoEl.play().catch(() => {});
-                        } else if (videoEl.playbackRate > 0 && videoEl.currentTime >= videoEl.duration - 0.1) {
-                            videoEl.playbackRate = -1.2;
-                            videoEl.play().catch(() => {});
-                        }
-                    }, 100);
-                    activeBoomerangIntervals.push(interval);
-                };
-            });
         }
 
         function downloadLiveStripModal() {
