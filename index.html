@@ -284,7 +284,7 @@
         .photo-slot-wrapper-2photo { position: relative; width: 100%; aspect-ratio: 3 / 4; box-sizing: border-box; }
         .strip-footer { text-align: center; font-size: 10px; font-weight: 700; padding: 6px 0; letter-spacing: 1px; }
 
-        /* Tombol Bundar Live Photo Terpisah di Sebelah Kanan Strip (Menyerupai Tombol Filter) */
+        /* Tombol Bulat Live Photo Terpisah di Sebelah Kanan Strip */
         .btn-open-live {
             position: absolute; right: -12px; top: 70px; width: 44px; height: 44px;
             border-radius: 50%; background: rgba(255, 0, 127, 0.85);
@@ -295,7 +295,7 @@
         .btn-open-live:active { transform: scale(0.9); }
         .btn-open-live svg { width: 20px; height: 20px; }
 
-        /* Tombol Filter di Sebelah Kanan Strip (Agak Bawah) */
+        /* Tombol Filter di Sebelah Kanan Strip */
         .btn-open-filter {
             position: absolute; right: -12px; top: 125px; width: 44px; height: 44px;
             border-radius: 50%; background: rgba(255, 255, 255, 0.25);
@@ -357,8 +357,9 @@
         .modal-actions { display: flex; gap: 10px; width: 100%; max-width: 280px; justify-content: center; }
         .modal-actions .btn { padding: 10px; font-size: 13px; flex: 1; }
         
-        #live-player-modal video {
+        #live-playback-video {
             width: 100%; max-width: 300px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+            transform: scaleX(1); /* Live photo tidak mirror */
         }
         #capture-canvas { display: none; }
     </style>
@@ -486,12 +487,13 @@
         <!-- LIVE PHOTO PLAYER MODAL -->
         <div id="live-player-modal" class="modal-overlay" onclick="playPopSound(); closeLiveModal()">
             <div class="modal-content-wrapper" onclick="event.stopPropagation()">
-                <div style="display:flex; flex-direction:column; align-items:center; gap:10px;">
+                <div style="display:flex; flex-direction:column; align-items:center; gap:10px; width:100%;">
                     <h3 style="color:#fff; font-family:'Fredoka One',cursive; font-size:16px;">LIVE PHOTO PLAYBACK</h3>
                     <video id="live-playback-video" autoplay loop playsinline muted></video>
                 </div>
             </div>
             <div class="modal-actions" onclick="event.stopPropagation()">
+                <button id="btn-download-live" class="btn btn-download" onclick="playPopSound(); downloadLiveVideo()">DOWNLOAD LIVE</button>
                 <button class="btn btn-secondary" onclick="playPopSound(); closeLiveModal()">TUTUP</button>
             </div>
         </div>
@@ -835,7 +837,7 @@
 
             currentLiveVideoUrl = capturedVideoChunks[0] || null;
 
-            const stripRecord = { theme: selectedTheme, photoCount: totalPhotosRequired, photos: [...capturedPhotos], liveVideo: currentLiveVideoUrl, date: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) };
+            const stripRecord = { theme: selectedTheme, photoCount: totalPhotosRequired, photos: [...capturedPhotos], liveVideo: currentLiveVideoUrl, filter: currentFilter, date: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) };
             photoGallery.unshift(stripRecord);
             if (photoGallery.length > 25) photoGallery.pop();
             localStorage.setItem('potobok_gallery', JSON.stringify(photoGallery));
@@ -846,6 +848,9 @@
             const videoModal = document.getElementById('live-playback-video');
             if (currentLiveVideoUrl) {
                 videoModal.src = currentLiveVideoUrl;
+                // Terapkan filter yang sama pada video live photo
+                let filterStyle = getFilterCss(currentFilter);
+                videoModal.style.filter = filterStyle;
                 document.getElementById('live-player-modal').classList.add('active');
             } else {
                 alert("Live photo video belum tersedia untuk sesi ini.");
@@ -858,6 +863,15 @@
             document.getElementById('live-player-modal').classList.remove('active');
         }
 
+        function downloadLiveVideo() {
+            if (currentLiveVideoUrl) {
+                const link = document.createElement('a');
+                link.download = `potobok-live-${Date.now()}.webm`;
+                link.href = currentLiveVideoUrl;
+                link.click();
+            }
+        }
+
         function openFilterModal() {
             const modalPreviewContainer = document.getElementById('modal-filter-preview-container');
             modalPreviewContainer.innerHTML = document.getElementById('final-frame').outerHTML;
@@ -868,11 +882,7 @@
 
         function closeFilterModal() { document.getElementById('filter-modal').classList.remove('active'); }
 
-        function applyPhotoFilter(filterType, btnElement) {
-            currentFilter = filterType;
-            document.querySelectorAll('.filter-option-btn').forEach(btn => btn.classList.remove('active'));
-            if (btnElement) btnElement.classList.add('active');
-
+        function getFilterCss(filterType) {
             let filterStyle = 'none';
             if (filterType === 'fuji') filterStyle = 'contrast(115%) saturate(125%) brightness(102%) sepia(15%) hue-rotate(-10deg)';
             if (filterType === 'kodak') filterStyle = 'contrast(120%) saturate(140%) sepia(30%) brightness(98%)';
@@ -883,6 +893,15 @@
             if (filterType === 'vintage') filterStyle = 'sepia(50%) hue-rotate(-30deg) contrast(130%) brightness(90%) saturate(80%)';
             if (filterType === 'cool') filterStyle = 'hue-rotate(180deg) saturate(130%) brightness(100%)';
             if (filterType === 'moody') filterStyle = 'contrast(135%) brightness(85%) saturate(80%)';
+            return filterStyle;
+        }
+
+        function applyPhotoFilter(filterType, btnElement) {
+            currentFilter = filterType;
+            document.querySelectorAll('.filter-option-btn').forEach(btn => btn.classList.remove('active'));
+            if (btnElement) btnElement.classList.add('active');
+
+            let filterStyle = getFilterCss(filterType);
 
             for (let i = 1; i <= 3; i++) {
                 const slotMain = document.getElementById(`slot-${i}`);
@@ -953,6 +972,7 @@
 
         function showGalleryDetail(item, themeClass, pCount) {
             currentLiveVideoUrl = item.liveVideo || null;
+            currentFilter = item.filter || 'normal';
             let slotClass = (pCount === 2) ? 'photo-slot-wrapper-2photo' : 'photo-slot-wrapper';
             let slotsHTML = `<div class="${slotClass}"><div class="photo-slot" style="background-image: url(${item.photos[0]})"></div></div>
                              <div class="${slotClass}"><div class="photo-slot" style="background-image: url(${item.photos[1]})"></div></div>`;
