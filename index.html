@@ -281,9 +281,9 @@
         .photo-slot-wrapper { position: relative; width: 100%; aspect-ratio: 4 / 3; box-sizing: border-box; }
         .photo-slot { width: 100%; height: 100%; background-size: cover; background-position: center; transform: scaleX(-1); position: relative; }
         
-        /* Slot video dalam strip Live Photo template (tidak mirror) */
+        /* Video Live Photo (tidak mirror, ukuran dan posisi sama persis dengan foto asli) */
         .live-slot-video {
-            width: 100%; height: 100%; object-fit: cover; transform: scaleX(1); position: relative; display: block;
+            width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); position: relative; display: block;
         }
         
         .photo-slot-wrapper-2photo { position: relative; width: 100%; aspect-ratio: 3 / 4; box-sizing: border-box; }
@@ -749,42 +749,23 @@
             flash.style.opacity = '1';
             setTimeout(() => { flash.style.opacity = '0'; }, 150);
 
-            // Merekam video un-mirrored menggunakan offscreen canvas agar hasilnya tidak mirror dan ukuran/aspek rasio pas
+            // Merekam video langsung dari cameraStream agar handal di semua HP
             if (!isSimulated && cameraStream) {
                 try {
-                    const videoEl = document.getElementById('live-video');
-                    const canvas = document.createElement('canvas');
-                    canvas.width = (totalPhotosRequired === 2) ? 480 : 640;
-                    canvas.height = (totalPhotosRequired === 2) ? 640 : 480;
-                    const ctx = canvas.getContext('2d');
-                    
                     let localChunks = [];
-                    const canvasStream = canvas.captureStream(30);
-                    let recorder = new MediaRecorder(canvasStream, { mimeType: 'video/webm;codecs=vp8' });
-                    
+                    let recorder = new MediaRecorder(cameraStream, { mimeType: 'video/webm;codecs=vp8' });
                     recorder.ondataavailable = e => { if (e.data.size > 0) localChunks.push(e.data); };
                     recorder.onstop = () => {
                         const blob = new Blob(localChunks, { type: 'video/webm' });
                         capturedVideoChunks.push(URL.createObjectURL(blob));
                     };
-                    
-                    const vWidth = videoEl.videoWidth, vHeight = videoEl.videoHeight;
-                    let targetAspect = (totalPhotosRequired === 2) ? (3 / 4) : (4 / 3);
-                    let sWidth = vWidth, sHeight = vWidth / targetAspect, sx = 0, sy = (vHeight - sHeight) / 2;
-                    if (sHeight > vHeight) { sHeight = vHeight; sWidth = vHeight * targetAspect; sx = (vWidth - sWidth) / 2; sy = 0; }
-
-                    let drawInterval = setInterval(() => {
-                        ctx.drawImage(videoEl, sx, sy, sWidth, sHeight, 0, 0, canvas.width, canvas.height);
-                    }, 30);
-
                     recorder.start();
-                    setTimeout(() => {
-                        clearInterval(drawInterval);
-                        if (recorder.state === 'recording') recorder.stop();
-                    }, 2000); // Durasi live photo 2 detik
+                    setTimeout(() => { if (recorder.state === 'recording') recorder.stop(); }, 2000);
                 } catch(e) {
                     capturedVideoChunks.push(null);
                 }
+            } else {
+                capturedVideoChunks.push(null);
             }
 
             let dataUrl = "";
@@ -870,14 +851,10 @@
             navigate('screen-result');
         }
 
-        // Live Photo Modal: Menampilkan Strip Template Lengkap Sesuai Template Pilihan & Ukuran Persis
+        // Live Photo Modal: Memastikan video/fallback foto berjalan dinamis sesuai template
         function playLivePhotoModal() {
-            if (currentLiveVideoUrls.length > 0) {
-                renderLiveStripContainer(selectedTheme, totalPhotosRequired, currentLiveVideoUrls, currentFilter, 'live-modal-strip-wrapper');
-                document.getElementById('live-player-modal').classList.add('active');
-            } else {
-                alert("Live photo video belum tersedia untuk sesi ini.");
-            }
+            renderLiveStripContainer(selectedTheme, totalPhotosRequired, currentLiveVideoUrls, capturedPhotos, currentFilter, 'live-modal-strip-wrapper');
+            document.getElementById('live-player-modal').classList.add('active');
         }
 
         function closeLiveModal() {
@@ -887,7 +864,7 @@
             document.getElementById('live-player-modal').classList.remove('active');
         }
 
-        function renderLiveStripContainer(themeClass, pCount, videoUrls, filterType, containerId) {
+        function renderLiveStripContainer(themeClass, pCount, videoUrls, photoUrls, filterType, containerId) {
             activeBoomerangIntervals.forEach(interval => clearInterval(interval));
             activeBoomerangIntervals = [];
 
@@ -896,12 +873,23 @@
 
             let slotsHTML = '';
             for (let i = 0; i < pCount; i++) {
-                let vUrl = videoUrls[i] || videoUrls[0];
-                slotsHTML += `
-                    <div class="${slotClass}">
-                        <video class="live-slot-video" src="${vUrl}" autoplay playsinline muted style="filter: ${filterStyle};"></video>
-                    </div>
-                `;
+                let vUrl = videoUrls[i];
+                let pUrl = photoUrls[i] || photoUrls[0];
+                
+                if (vUrl) {
+                    slotsHTML += `
+                        <div class="${slotClass}">
+                            <video class="live-slot-video" src="${vUrl}" autoplay playsinline muted loop style="filter: ${filterStyle};"></video>
+                        </div>
+                    `;
+                } else {
+                    // Fallback jika video gagal direkam: menggunakan background foto dengan animasi pulsa/zoom boomerang lembut
+                    slotsHTML += `
+                        <div class="${slotClass}">
+                            <div class="photo-slot fallback-animated-slot" style="background-image: url(${pUrl}); filter: ${filterStyle}; animation: fallbackZoom 2s ease-in-out infinite alternate;"></div>
+                        </div>
+                    `;
+                }
             }
 
             const container = document.getElementById(containerId);
@@ -913,20 +901,28 @@
                 </div>
             `;
 
-            // Efek boomerang / mundur-maju otomatis dari akhir ke awal video
+            // Style tambahan untuk animasi fallback jika video tidak ada
+            if (!document.getElementById('fallback-anim-style')) {
+                const styleEl = document.createElement('style');
+                styleEl.id = 'fallback-anim-style';
+                styleEl.innerHTML = `@keyframes fallbackZoom { 0% { transform: scaleX(-1) scale(1); } 100% { transform: scaleX(-1) scale(1.06); } }`;
+                document.head.appendChild(styleEl);
+            }
+
+            // Pemutaran video boomerang mundur-maju otomatis
             const videoElements = container.querySelectorAll('.live-slot-video');
             videoElements.forEach((videoEl) => {
                 videoEl.onloadedmetadata = () => {
-                    videoEl.currentTime = videoEl.duration; // Mulai dari akhir
-                    videoEl.playbackRate = -1.2; // Mundur
+                    videoEl.currentTime = videoEl.duration;
+                    videoEl.playbackRate = -1.2;
                     videoEl.play().catch(() => {});
 
                     let interval = setInterval(() => {
                         if (videoEl.playbackRate < 0 && videoEl.currentTime <= 0.1) {
-                            videoEl.playbackRate = 1.2; // Maju
+                            videoEl.playbackRate = 1.2;
                             videoEl.play().catch(() => {});
                         } else if (videoEl.playbackRate > 0 && videoEl.currentTime >= videoEl.duration - 0.1) {
-                            videoEl.playbackRate = -1.2; // Mundur kembali
+                            videoEl.playbackRate = -1.2;
                             videoEl.play().catch(() => {});
                         }
                     }, 100);
@@ -1039,6 +1035,7 @@
 
         function showGalleryDetail(item, themeClass, pCount) {
             currentLiveVideoUrls = item.liveVideos || [item.liveVideo];
+            capturedPhotos = item.photos || [];
             currentFilter = item.filter || 'normal';
             let slotClass = (pCount === 2) ? 'photo-slot-wrapper-2photo' : 'photo-slot-wrapper';
             let slotsHTML = `<div class="${slotClass}"><div class="photo-slot" style="background-image: url(${item.photos[0]})"></div></div>
@@ -1051,7 +1048,7 @@
                 <div style="position:relative; display:inline-block;">
                     <div id="modal-strip-element" class="frame-result ${themeClass}" style="width: 220px; animation: none;">
                         <div class="strip-header">POTOBOK EUY!</div>
-                        <div style="display: flex; flex-direction: column; gap: 5px; padding: 0 5px;">${slotsHTML}</div>
+                        <div style="display: flex; flex-direction: column; gap: 5px; width: 100%; padding: 0 5px;">${slotsHTML}</div>
                         <div class="strip-footer">${item.date}</div>
                     </div>
                     <button class="btn-open-live" onclick="playPopSound(); playLivePhotoModal()" style="top:50px;" title="Putar Live Photo">
