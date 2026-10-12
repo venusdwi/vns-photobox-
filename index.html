@@ -762,13 +762,13 @@
                         context.drawImage(videoEl, sx, sy, sWidth, sHeight, 0, 0, canvas.width, canvas.height);
                         slotFrames.push(canvas.toDataURL('image/jpeg', 0.8));
                     }
-                }, 60);
+                }, 50);
 
                 setTimeout(() => {
                     clearInterval(captureInterval);
                     if (slotFrames.length === 0) slotFrames.push(canvas.toDataURL('image/jpeg', 0.85));
                     capturedFramesArrays.push(slotFrames);
-                }, 2400);
+                }, 2200);
             } else {
                 slotFrames.push(`https://placehold.co/600x450/ff5722/ffffff?text=FOTO+${currentPhotoIndex+1}`);
                 capturedFramesArrays.push(slotFrames);
@@ -897,7 +897,7 @@
             }
         }
 
-        // Perekaman Video Sempurna: Ukuran proporsional persis dan normalisasi frame agar tidak ada blank hitam
+        // Perekaman Video Sempurna: Ukuran proporsional persis dan sinkronisasi mutlak untuk mencegah layar hitam
         function downloadLiveStripVideoPerfect() {
             const btnDownload = document.getElementById('btn-download-live');
             btnDownload.innerText = "Merekam Video...";
@@ -908,7 +908,6 @@
             const ctx = canvas.getContext('2d');
             
             let isPortrait2 = (totalPhotosRequired === 2);
-            // Menggunakan ukuran pixel persis rasio standar frame foto statis
             canvas.width = 440;
             canvas.height = isPortrait2 ? 636 : 752;
 
@@ -947,21 +946,20 @@
 
             mediaRecorder.start();
 
-            // Normalisasi panjang array frame tiap slot agar seragam (menghilangkan blank hitam)
-            let maxFramesCount = 0;
-            let normalizedFramesList = [];
-
+            // Menyamakan jumlah frame mutlak tiap slot agar tidak ada blank hitam atau jeda kosong
+            let maxFramesCount = 20;
             for (let i = 0; i < totalPhotosRequired; i++) {
-                let fArr = (capturedFramesArrays[i] && capturedFramesArrays[i].length > 0) ? [...capturedFramesArrays[i]] : [capturedPhotos[i]];
+                let fArr = (capturedFramesArrays[i] && capturedFramesArrays[i].length > 0) ? capturedFramesArrays[i] : [capturedPhotos[i]];
                 if (fArr.length > maxFramesCount) maxFramesCount = fArr.length;
             }
 
+            let normalizedFramesList = [];
             for (let i = 0; i < totalPhotosRequired; i++) {
                 let fArr = (capturedFramesArrays[i] && capturedFramesArrays[i].length > 0) ? [...capturedFramesArrays[i]] : [capturedPhotos[i]];
                 let rev = fArr.reverse();
-                // Jika frame kurang dari maksimum, looping frame terakhir agar durasi sama rata
+                // Jika kurang dari max, isi sisa dengan foto statis utama agar tidak pernah kosong/hitam
                 while (rev.length < maxFramesCount) {
-                    rev.push(rev[rev.length - 1]);
+                    rev.push(capturedPhotos[i] || rev[0]);
                 }
                 normalizedFramesList.push(rev);
             }
@@ -969,9 +967,7 @@
             let frameStep = 0;
             let totalDurationMs = 5000;
             let intervalTime = 80;
-            let totalSteps = maxFramesCount;
 
-            // Preload semua objek gambar agar langsung siap render tanpa jeda hitam
             let preloadedImages = normalizedFramesList.map(slotArr => {
                 return slotArr.map(src => {
                     let img = new Image();
@@ -1004,8 +1000,9 @@
                 let gap = 6;
 
                 for (let i = 0; i < totalPhotosRequired; i++) {
-                    let imgIndex = Math.floor(frameStep) % totalSteps;
+                    let imgIndex = Math.floor(frameStep) % maxFramesCount;
                     let img = preloadedImages[i][imgIndex];
+                    let fallbackSrc = capturedPhotos[i];
 
                     let currentY = startY + (i * (slotHeight + gap));
                     ctx.save();
@@ -1027,8 +1024,10 @@
                         }
                         ctx.drawImage(img, dX, dY, dW, dH);
                     } else {
-                        ctx.fillStyle = '#333';
-                        ctx.fillRect(12, currentY, slotWidth, slotHeight);
+                        // Fallback aman gambar statis agar tidak pernah blank hitam
+                        let fallbackImg = new Image();
+                        fallbackImg.src = fallbackSrc;
+                        ctx.drawImage(fallbackImg, 12, currentY, slotWidth, slotHeight);
                     }
                     ctx.restore();
                 }
