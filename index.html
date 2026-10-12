@@ -281,11 +281,6 @@
         .photo-slot-wrapper { position: relative; width: 100%; aspect-ratio: 4 / 3; box-sizing: border-box; }
         .photo-slot { width: 100%; height: 100%; background-size: cover; background-position: center; transform: scaleX(-1); position: relative; }
         
-        /* Slot Canvas Live Photo (Ukuran & Tampilan 100% Identik dengan Foto Utama) */
-        .live-slot-canvas {
-            width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); position: relative; display: block;
-        }
-        
         .photo-slot-wrapper-2photo { position: relative; width: 100%; aspect-ratio: 3 / 4; box-sizing: border-box; }
         .strip-footer { text-align: center; font-size: 10px; font-weight: 700; padding: 6px 0; letter-spacing: 1px; }
 
@@ -494,7 +489,7 @@
                 </div>
             </div>
             <div class="modal-actions" onclick="event.stopPropagation()">
-                <button id="btn-download-live" class="btn btn-download" onclick="playPopSound(); downloadLiveStripModal()">DOWNLOAD</button>
+                <button id="btn-download-live" class="btn btn-download" onclick="playPopSound(); downloadLiveStripVideo()">DOWNLOAD VIDEO</button>
                 <button class="btn btn-secondary" onclick="playPopSound(); closeLiveModal()">TUTUP</button>
             </div>
         </div>
@@ -550,7 +545,7 @@
         let selectedTheme = 'strip-theme-1';
         let totalPhotosRequired = 3;
         let capturedPhotos = [];
-        let capturedFramesArrays = []; // Menyimpan array frame gambar per slot untuk animasi mundur sempurna
+        let capturedFramesArrays = [];
         let activeLiveIntervals = [];
         let currentPhotoIndex = 0;
         let isSimulated = false;
@@ -748,7 +743,6 @@
             flash.style.opacity = '1';
             setTimeout(() => { flash.style.opacity = '0'; }, 150);
 
-            // Merekam rangkaian frame selama 1.5 detik sebelum shutter ditekan untuk efek mundur (reverse)
             let slotFrames = [];
             const videoEl = document.getElementById('live-video');
             const canvas = document.getElementById('capture-canvas');
@@ -763,7 +757,6 @@
                 let sWidth = vWidth, sHeight = vWidth / targetAspect, sx = 0, sy = (vHeight - sHeight) / 2;
                 if (sHeight > vHeight) { sHeight = vHeight; sWidth = vHeight * targetAspect; sx = (vWidth - sWidth) / 2; sy = 0; }
 
-                // Ambil 15 frame berturut-turut menjelang jepretan
                 let captureInterval = setInterval(() => {
                     if (videoEl.readyState >= videoEl.HAVE_CURRENT_DATA) {
                         context.drawImage(videoEl, sx, sy, sWidth, sHeight, 0, 0, canvas.width, canvas.height);
@@ -853,7 +846,6 @@
             navigate('screen-result');
         }
 
-        // Live Photo Modal: Menampilkan animasi mundur (reverse) di setiap slot dengan ukuran identik
         function playLivePhotoModal() {
             renderLiveStripContainer(selectedTheme, totalPhotosRequired, capturedFramesArrays, capturedPhotos, currentFilter, 'live-modal-strip-wrapper');
             document.getElementById('live-player-modal').classList.add('active');
@@ -890,12 +882,10 @@
                 </div>
             `;
 
-            // Jalankan animasi putar mundur (reverse playback) untuk setiap slot
             for (let i = 0; i < pCount; i++) {
                 let frames = (framesArrays[i] && framesArrays[i].length > 0) ? [...framesArrays[i]] : [photoUrls[i]];
                 let slotDiv = document.getElementById(`live-slot-img-${i}`);
                 if (slotDiv && frames.length > 1) {
-                    // Balik urutan frame agar bergerak mundur
                     let revFrames = frames.reverse();
                     let fIndex = 0;
                     let timer = setInterval(() => {
@@ -907,8 +897,71 @@
             }
         }
 
-        function downloadLiveStripModal() {
-            downloadStripPhoto('active-live-strip-element', 'btn-download-live');
+        // Fungsi khusus untuk merekam elemen HTML Live Photo menjadi file Video (.webm) bergerak
+        function downloadLiveStripVideo() {
+            const btnDownload = document.getElementById('btn-download-live');
+            btnDownload.innerText = "Merekam Video...";
+            btnDownload.style.opacity = "0.7";
+            btnDownload.style.pointerEvents = "none";
+
+            const element = document.getElementById('active-live-strip-element');
+            
+            // Menggunakan html2canvas berulang untuk menghasilkan stream video bergerak
+            html2canvas(element, { scale: 2, useCORS: true, backgroundColor: null }).then(firstCanvas => {
+                const stream = firstCanvas.captureStream(15); // 15 fps
+                let recordedChunks = [];
+                let mediaRecorder;
+
+                try {
+                    mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp8' });
+                } catch (e) {
+                    try { mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm' }); } 
+                    catch (err) { mediaRecorder = new MediaRecorder(stream); }
+                }
+
+                mediaRecorder.ondataavailable = (event) => {
+                    if (event.data && event.data.size > 0) recordedChunks.push(event.data);
+                };
+
+                mediaRecorder.onstop = () => {
+                    const blob = new Blob(recordedChunks, { type: 'video/webm' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.style.display = 'none';
+                    a.href = url;
+                    a.download = `potobok-live-euy-${Date.now()}.webm`;
+                    document.body.appendChild(a);
+                    a.click();
+                    setTimeout(() => {
+                        document.body.removeChild(a);
+                        window.URL.revokeObjectURL(url);
+                        btnDownload.innerText = "DOWNLOAD VIDEO";
+                        btnDownload.style.opacity = "1";
+                        btnDownload.style.pointerEvents = "auto";
+                    }, 100);
+                };
+
+                mediaRecorder.start();
+
+                // Ambil snapshot berulang kali selama 2.5 detik untuk merekam animasi putar mundur
+                let recordInterval = setInterval(() => {
+                    html2canvas(element, { scale: 2, useCORS: true, backgroundColor: null }).then(canvas => {
+                        let ctx = firstCanvas.getContext('2d');
+                        ctx.clearRect(0, 0, firstCanvas.width, firstCanvas.height);
+                        ctx.drawImage(canvas, 0, 0, firstCanvas.width, firstCanvas.height);
+                    });
+                }, 100);
+
+                setTimeout(() => {
+                    clearInterval(recordInterval);
+                    if (mediaRecorder.state === 'recording') mediaRecorder.stop();
+                }, 2500);
+
+            }).catch(() => {
+                btnDownload.innerText = "DOWNLOAD VIDEO";
+                btnDownload.style.opacity = "1";
+                btnDownload.style.pointerEvents = "auto";
+            });
         }
 
         function openFilterModal() {
