@@ -489,7 +489,7 @@
                 </div>
             </div>
             <div class="modal-actions" onclick="event.stopPropagation()">
-                <button id="btn-download-live" class="btn btn-download" onclick="playPopSound(); downloadLiveStripVideoPerfect()">DOWNLOAD VIDEO</button>
+                <button id="btn-download-live" class="btn btn-download" onclick="playPopSound(); downloadLiveStripVideoDirect()">DOWNLOAD VIDEO</button>
                 <button class="btn btn-secondary" onclick="playPopSound(); closeLiveModal()">TUTUP</button>
             </div>
         </div>
@@ -897,148 +897,101 @@
             }
         }
 
-        // Perekaman Video Sempurna: Ukuran proporsional persis dan sinkronisasi mutlak untuk mencegah layar hitam
-        function downloadLiveStripVideoPerfect() {
+        // Perekaman Langsung dari Elemen HTML `#active-live-strip-element` menggunakan html2canvas perkecil frame secara kontinyu (Menjamin 100% Persis Hasil Template & Tanpa Blank Hitam)
+        function downloadLiveStripVideoDirect() {
             const btnDownload = document.getElementById('btn-download-live');
             btnDownload.innerText = "Merekam Video...";
             btnDownload.style.opacity = "0.7";
             btnDownload.style.pointerEvents = "none";
 
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
+            const element = document.getElementById('active-live-strip-element');
             
-            let isPortrait2 = (totalPhotosRequired === 2);
-            canvas.width = 440;
-            canvas.height = isPortrait2 ? 636 : 752;
+            // Render canvas pertama untuk mendapatkan dimensi layout persis
+            html2canvas(element, { scale: 1.5, useCORS: true, backgroundColor: null, logging: false }).then(firstCanvas => {
+                const stream = firstCanvas.captureStream(20);
+                let recordedChunks = [];
+                let mediaRecorder;
 
-            const stream = canvas.captureStream(20);
-            let recordedChunks = [];
-            let mediaRecorder;
-
-            try {
-                mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp8' });
-            } catch (e) {
-                try { mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm' }); } 
-                catch (err) { mediaRecorder = new MediaRecorder(stream); }
-            }
-
-            mediaRecorder.ondataavailable = (event) => {
-                if (event.data && event.data.size > 0) recordedChunks.push(event.data);
-            };
-
-            mediaRecorder.onstop = () => {
-                const blob = new Blob(recordedChunks, { type: 'video/webm' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.style.display = 'none';
-                a.href = url;
-                a.download = `potobok-live-euy-${Date.now()}.webm`;
-                document.body.appendChild(a);
-                a.click();
-                setTimeout(() => {
-                    document.body.removeChild(a);
-                    window.URL.revokeObjectURL(url);
-                    btnDownload.innerText = "DOWNLOAD VIDEO";
-                    btnDownload.style.opacity = "1";
-                    btnDownload.style.pointerEvents = "auto";
-                }, 100);
-            };
-
-            mediaRecorder.start();
-
-            // Menyamakan jumlah frame mutlak tiap slot agar tidak ada blank hitam atau jeda kosong
-            let maxFramesCount = 20;
-            for (let i = 0; i < totalPhotosRequired; i++) {
-                let fArr = (capturedFramesArrays[i] && capturedFramesArrays[i].length > 0) ? capturedFramesArrays[i] : [capturedPhotos[i]];
-                if (fArr.length > maxFramesCount) maxFramesCount = fArr.length;
-            }
-
-            let normalizedFramesList = [];
-            for (let i = 0; i < totalPhotosRequired; i++) {
-                let fArr = (capturedFramesArrays[i] && capturedFramesArrays[i].length > 0) ? [...capturedFramesArrays[i]] : [capturedPhotos[i]];
-                let rev = fArr.reverse();
-                // Jika kurang dari max, isi sisa dengan foto statis utama agar tidak pernah kosong/hitam
-                while (rev.length < maxFramesCount) {
-                    rev.push(capturedPhotos[i] || rev[0]);
+                try {
+                    mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp8' });
+                } catch (e) {
+                    try { mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm' }); } 
+                    catch (err) { mediaRecorder = new MediaRecorder(stream); }
                 }
-                normalizedFramesList.push(rev);
-            }
 
-            let frameStep = 0;
-            let totalDurationMs = 5000;
-            let intervalTime = 80;
+                mediaRecorder.ondataavailable = (event) => {
+                    if (event.data && event.data.size > 0) recordedChunks.push(event.data);
+                };
 
-            let preloadedImages = normalizedFramesList.map(slotArr => {
-                return slotArr.map(src => {
-                    let img = new Image();
-                    img.crossOrigin = "anonymous";
-                    img.src = src;
-                    return img;
-                });
-            });
+                mediaRecorder.onstop = () => {
+                    const blob = new Blob(recordedChunks, { type: 'video/webm' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.style.display = 'none';
+                    a.href = url;
+                    a.download = `potobok-live-euy-${Date.now()}.webm`;
+                    document.body.appendChild(a);
+                    a.click();
+                    setTimeout(() => {
+                        document.body.removeChild(a);
+                        window.URL.revokeObjectURL(url);
+                        btnDownload.innerText = "DOWNLOAD VIDEO";
+                        btnDownload.style.opacity = "1";
+                        btnDownload.style.pointerEvents = "auto";
+                    }, 100);
+                };
 
-            let renderInterval = setInterval(() => {
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                mediaRecorder.start();
 
-                // Background strip
-                ctx.fillStyle = '#ffffff';
-                if (selectedTheme === 'strip-theme-2' || selectedTheme === 'strip-theme-14' || selectedTheme === 'strip-theme-17') ctx.fillStyle = '#121212';
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-                
-                // Header & Footer
-                ctx.fillStyle = (selectedTheme === 'strip-theme-2' || selectedTheme === 'strip-theme-14') ? '#ffffff' : '#000000';
-                ctx.font = 'bold 16px "Fredoka One", cursive';
-                ctx.textAlign = 'center';
-                ctx.fillText("POTOBOK EUY!", canvas.width / 2, 28);
-                
-                ctx.font = 'bold 12px Poppins, sans-serif';
-                ctx.fillText("EUY • 2026", canvas.width / 2, canvas.height - 15);
-
-                let startY = 40;
-                let slotWidth = canvas.width - 24;
-                let slotHeight = isPortrait2 ? ((canvas.height - 80 - 25) / 2) : ((canvas.height - 90 - 30) / 3);
-                let gap = 6;
-
+                // Sinkronisasi frame animasi mundur untuk setiap slot agar berjalan serentak tanpa jeda kosong
+                let maxFramesCount = 20;
                 for (let i = 0; i < totalPhotosRequired; i++) {
-                    let imgIndex = Math.floor(frameStep) % maxFramesCount;
-                    let img = preloadedImages[i][imgIndex];
-                    let fallbackSrc = capturedPhotos[i];
-
-                    let currentY = startY + (i * (slotHeight + gap));
-                    ctx.save();
-                    ctx.beginPath();
-                    ctx.roundRect(12, currentY, slotWidth, slotHeight, 6);
-                    ctx.clip();
-                    
-                    if (img && img.complete && img.naturalWidth !== 0) {
-                        let iRatio = img.naturalWidth / img.naturalHeight;
-                        let sRatio = slotWidth / slotHeight;
-                        let dW = slotWidth, dH = slotHeight, dX = 12, dY = currentY;
-
-                        if (iRatio > sRatio) {
-                            dW = slotHeight * iRatio;
-                            dX = 12 - (dW - slotWidth) / 2;
-                        } else {
-                            dH = slotWidth / iRatio;
-                            dY = currentY - (dH - slotHeight) / 2;
-                        }
-                        ctx.drawImage(img, dX, dY, dW, dH);
-                    } else {
-                        // Fallback aman gambar statis agar tidak pernah blank hitam
-                        let fallbackImg = new Image();
-                        fallbackImg.src = fallbackSrc;
-                        ctx.drawImage(fallbackImg, 12, currentY, slotWidth, slotHeight);
-                    }
-                    ctx.restore();
+                    let fArr = (capturedFramesArrays[i] && capturedFramesArrays[i].length > 0) ? capturedFramesArrays[i] : [capturedPhotos[i]];
+                    if (fArr.length > maxFramesCount) maxFramesCount = fArr.length;
                 }
 
-                frameStep++;
-            }, intervalTime);
+                let normalizedFramesList = [];
+                for (let i = 0; i < totalPhotosRequired; i++) {
+                    let fArr = (capturedFramesArrays[i] && capturedFramesArrays[i].length > 0) ? [...capturedFramesArrays[i]] : [capturedPhotos[i]];
+                    let rev = fArr.reverse();
+                    while (rev.length < maxFramesCount) {
+                        rev.push(capturedPhotos[i] || rev[0]);
+                    }
+                    normalizedFramesList.push(rev);
+                }
 
-            setTimeout(() => {
-                clearInterval(renderInterval);
-                if (mediaRecorder.state === 'recording') mediaRecorder.stop();
-            }, totalDurationMs);
+                let step = 0;
+                let totalDurationMs = 5000;
+                let intervalTime = 80;
+
+                let recordInterval = setInterval(() => {
+                    let frameIdx = step % maxFramesCount;
+                    for (let i = 0; i < totalPhotosRequired; i++) {
+                        let slotDiv = document.getElementById(`live-slot-img-${i}`);
+                        if (slotDiv && normalizedFramesList[i][frameIdx]) {
+                            slotDiv.style.backgroundImage = `url(${normalizedFramesList[i][frameIdx]})`;
+                        }
+                    }
+
+                    html2canvas(element, { scale: 1.5, useCORS: true, backgroundColor: null, logging: false }).then(canvas => {
+                        let ctx = firstCanvas.getContext('2d');
+                        ctx.clearRect(0, 0, firstCanvas.width, firstCanvas.height);
+                        ctx.drawImage(canvas, 0, 0, firstCanvas.width, firstCanvas.height);
+                    });
+
+                    step++;
+                }, intervalTime);
+
+                setTimeout(() => {
+                    clearInterval(recordInterval);
+                    if (mediaRecorder.state === 'recording') mediaRecorder.stop();
+                }, totalDurationMs);
+
+            }).catch(() => {
+                btnDownload.innerText = "DOWNLOAD VIDEO";
+                btnDownload.style.opacity = "1";
+                btnDownload.style.pointerEvents = "auto";
+            });
         }
 
         function openFilterModal() {
