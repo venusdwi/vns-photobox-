@@ -281,7 +281,7 @@
         .photo-slot-wrapper { position: relative; width: 100%; aspect-ratio: 4 / 3; box-sizing: border-box; }
         .photo-slot { width: 100%; height: 100%; background-size: cover; background-position: center; transform: scaleX(-1); position: relative; }
         
-        /* Slot video dalam strip Live Photo template */
+        /* Video Live Photo disamakan persis dengan ukuran dan posisi slot foto */
         .live-slot-video {
             width: 100%; height: 100%; object-fit: cover; transform: scaleX(1); position: relative; display: block;
         }
@@ -485,7 +485,7 @@
             </div>
         </div>
 
-        <!-- LIVE PHOTO PLAYER MODAL (Live Photo Berdasarkan Template Pilihan) -->
+        <!-- LIVE PHOTO PLAYER MODAL -->
         <div id="live-player-modal" class="modal-overlay" onclick="playPopSound(); closeLiveModal()">
             <div class="modal-content-wrapper" onclick="event.stopPropagation()">
                 <div style="display:flex; flex-direction:column; align-items:center; gap:8px; width:100%;">
@@ -556,7 +556,7 @@
         let isSimulated = false;
         let audioCtx = null;
         let activeBoomerangIntervals = [];
-        let photoGallery = JSON.parse(localStorage.getItem('potobok_gallery') || '[]');
+        let photoGallery = JSON.parse(localStorage.getItem('potobok_gallery'] || '[]');
         let openedFromScreen = 'home';
         let currentFilter = 'normal';
 
@@ -749,18 +749,41 @@
             flash.style.opacity = '1';
             setTimeout(() => { flash.style.opacity = '0'; }, 150);
 
+            // Rekam video un-mirrored menggunakan offscreen canvas agar hasilnya tidak mirror
             if (!isSimulated && cameraStream) {
                 try {
+                    const videoEl = document.getElementById('live-video');
+                    const canvas = document.createElement('canvas');
+                    canvas.width = videoEl.videoWidth || 640;
+                    canvas.height = videoEl.videoHeight || 480;
+                    const ctx = canvas.getContext('2d');
+                    
                     let localChunks = [];
-                    let recorder = new MediaRecorder(cameraStream, { mimeType: 'video/webm;codecs=vp8' });
+                    // Rekam stream dari canvas agar orientasi tidak mirror
+                    const canvasStream = canvas.captureStream(30);
+                    let recorder = new MediaRecorder(canvasStream, { mimeType: 'video/webm;codecs=vp8' });
+                    
                     recorder.ondataavailable = e => { if (e.data.size > 0) localChunks.push(e.data); };
                     recorder.onstop = () => {
                         const blob = new Blob(localChunks, { type: 'video/webm' });
                         capturedVideoChunks.push(URL.createObjectURL(blob));
                     };
+                    
+                    let drawInterval = setInterval(() => {
+                        ctx.save();
+                        ctx.scale(-1, 1); // Balik agar sama seperti preview kamera saat merekam
+                        ctx.drawImage(videoEl, -canvas.width, 0, canvas.width, canvas.height);
+                        ctx.restore();
+                    }, 30);
+
                     recorder.start();
-                    setTimeout(() => { if (recorder.state === 'recording') recorder.stop(); }, 2000); // 2 detik durasi live photo
-                } catch(e) {}
+                    setTimeout(() => {
+                        clearInterval(drawInterval);
+                        if (recorder.state === 'recording') recorder.stop();
+                    }, 2000); // Durasi live photo 2 detik
+                } catch(e) {
+                    capturedVideoChunks.push(null);
+                }
             }
 
             let dataUrl = "";
@@ -846,7 +869,7 @@
             navigate('screen-result');
         }
 
-        // Live Photo Modal: Menampilkan Strip Template Lengkap dengan Video Berjalan Berdasarkan Template Terpilih
+        // Live Photo Modal: Menampilkan Strip Template Lengkap Sesuai Pilihan
         function playLivePhotoModal() {
             if (currentLiveVideoUrls.length > 0) {
                 renderLiveStripContainer(selectedTheme, totalPhotosRequired, currentLiveVideoUrls, currentFilter, 'live-modal-strip-wrapper');
@@ -884,26 +907,26 @@
             container.innerHTML = `
                 <div id="active-live-strip-element" class="frame-result ${themeClass}" style="width: 220px; animation: none;">
                     <div class="strip-header">POTOBOK EUY!</div>
-                    <div style="display: flex; flex-direction: column; gap: 5px; padding: 0 5px;">${slotsHTML}</div>
+                    <div style="display: flex; flex-direction: column; gap: 5px; width: 100%; padding: 0 5px;">${slotsHTML}</div>
                     <div class="strip-footer">EUY • 2026</div>
                 </div>
             `;
 
-            // Atur pemutaran boomerang (maju-mundur dari akhir ke awal, durasi ~2 detik)
+            // Efek boomerang / mundur-maju otomatis dari akhir ke awal video
             const videoElements = container.querySelectorAll('.live-slot-video');
             videoElements.forEach((videoEl) => {
                 videoEl.onloadedmetadata = () => {
-                    videoEl.currentTime = videoEl.duration; // Mulai dari akhir video
-                    videoEl.playbackRate = -1.2; // Putar mundur
-                    videoEl.play();
+                    videoEl.currentTime = videoEl.duration; // Mulai dari akhir
+                    videoEl.playbackRate = -1.2; // Mundur
+                    videoEl.play().catch(() => {});
 
                     let interval = setInterval(() => {
                         if (videoEl.playbackRate < 0 && videoEl.currentTime <= 0.1) {
-                            videoEl.playbackRate = 1.2; // Putar maju
-                            videoEl.play();
+                            videoEl.playbackRate = 1.2; // Maju
+                            videoEl.play().catch(() => {});
                         } else if (videoEl.playbackRate > 0 && videoEl.currentTime >= videoEl.duration - 0.1) {
-                            videoEl.playbackRate = -1.2; // Putar mundur kembali
-                            videoEl.play();
+                            videoEl.playbackRate = -1.2; // Mundur kembali
+                            videoEl.play().catch(() => {});
                         }
                     }, 100);
                     activeBoomerangIntervals.push(interval);
