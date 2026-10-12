@@ -484,12 +484,12 @@
             </div>
         </div>
 
-        <!-- LIVE PHOTO PLAYER MODAL -->
+        <!-- LIVE PHOTO PLAYER MODAL (Gaya Boomerang / Maju-Mundur) -->
         <div id="live-player-modal" class="modal-overlay" onclick="playPopSound(); closeLiveModal()">
             <div class="modal-content-wrapper" onclick="event.stopPropagation()">
                 <div style="display:flex; flex-direction:column; align-items:center; gap:10px; width:100%;">
                     <h3 style="color:#fff; font-family:'Fredoka One',cursive; font-size:16px;">LIVE PHOTO PLAYBACK</h3>
-                    <video id="live-playback-video" autoplay loop playsinline muted></video>
+                    <video id="live-playback-video" autoplay playsinline muted></video>
                 </div>
             </div>
             <div class="modal-actions" onclick="event.stopPropagation()">
@@ -554,6 +554,7 @@
         let currentPhotoIndex = 0;
         let isSimulated = false;
         let audioCtx = null;
+        let boomerangInterval = null;
         let photoGallery = JSON.parse(localStorage.getItem('potobok_gallery') || '[]');
         let openedFromScreen = 'home';
         let currentFilter = 'normal';
@@ -844,13 +845,30 @@
             navigate('screen-result');
         }
 
+        // Efek Boomerang (Maju-Mundur otomatis) untuk Live Photo Playback
         function playLivePhotoModal() {
             const videoModal = document.getElementById('live-playback-video');
             if (currentLiveVideoUrl) {
                 videoModal.src = currentLiveVideoUrl;
-                // Terapkan filter yang sama pada video live photo
                 let filterStyle = getFilterCss(currentFilter);
                 videoModal.style.filter = filterStyle;
+                
+                if (boomerangInterval) clearInterval(boomerangInterval);
+
+                videoModal.onloadedmetadata = () => {
+                    videoModal.play();
+                    let isReversing = false;
+                    boomerangInterval = setInterval(() => {
+                        if (!isReversing && videoModal.currentTime >= videoModal.duration - 0.1) {
+                            isReversing = true;
+                            videoModal.playbackRate = -1.5; // Mundur agak cepat
+                        } else if (isReversing && videoModal.currentTime <= 0.1) {
+                            isReversing = false;
+                            videoModal.playbackRate = 1.5; // Maju
+                        }
+                    }, 100);
+                };
+
                 document.getElementById('live-player-modal').classList.add('active');
             } else {
                 alert("Live photo video belum tersedia untuk sesi ini.");
@@ -858,6 +876,7 @@
         }
 
         function closeLiveModal() {
+            if (boomerangInterval) clearInterval(boomerangInterval);
             const videoModal = document.getElementById('live-playback-video');
             videoModal.pause();
             document.getElementById('live-player-modal').classList.remove('active');
