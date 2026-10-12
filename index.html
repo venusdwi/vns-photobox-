@@ -757,18 +757,19 @@
                 let sWidth = vWidth, sHeight = vWidth / targetAspect, sx = 0, sy = (vHeight - sHeight) / 2;
                 if (sHeight > vHeight) { sHeight = vHeight; sWidth = vHeight * targetAspect; sx = (vWidth - sWidth) / 2; sy = 0; }
 
+                // Perekaman diperpanjang hingga 2.5 detik agar durasi video live lebih panjang & mulus
                 let captureInterval = setInterval(() => {
                     if (videoEl.readyState >= videoEl.HAVE_CURRENT_DATA) {
                         context.drawImage(videoEl, sx, sy, sWidth, sHeight, 0, 0, canvas.width, canvas.height);
                         slotFrames.push(canvas.toDataURL('image/jpeg', 0.8));
                     }
-                }, 80);
+                }, 60);
 
                 setTimeout(() => {
                     clearInterval(captureInterval);
                     if (slotFrames.length === 0) slotFrames.push(canvas.toDataURL('image/jpeg', 0.85));
                     capturedFramesArrays.push(slotFrames);
-                }, 1200);
+                }, 2400);
             } else {
                 slotFrames.push(`https://placehold.co/600x450/ff5722/ffffff?text=FOTO+${currentPhotoIndex+1}`);
                 capturedFramesArrays.push(slotFrames);
@@ -891,13 +892,13 @@
                     let timer = setInterval(() => {
                         slotDiv.style.backgroundImage = `url(${revFrames[fIndex]})`;
                         fIndex = (fIndex + 1) % revFrames.length;
-                    }, 100);
+                    }, 80);
                     activeLiveIntervals.push(timer);
                 }
             }
         }
 
-        // Perekaman Video Langsung ke Canvas Memori (Tanpa html2canvas saat rekam, dijamin tidak ngezoom/terpotong)
+        // Perbaikan proporsi canvas agar hasil download video tidak gepeng dan durasinya lebih panjang
         function downloadLiveStripVideoPerfect() {
             const btnDownload = document.getElementById('btn-download-live');
             btnDownload.innerText = "Merekam Video...";
@@ -907,11 +908,12 @@
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d');
             
-            // Dimensi presisi hasil photostrip
+            // Rasio proporsional akurat untuk mencegah gepeng
+            let isPortrait2 = (totalPhotosRequired === 2);
             canvas.width = 440;
-            canvas.height = (totalPhotosRequired === 2) ? 680 : 760;
+            canvas.height = isPortrait2 ? 740 : 800;
 
-            const stream = canvas.captureStream(20); // 20 fps
+            const stream = canvas.captureStream(20);
             let recordedChunks = [];
             let mediaRecorder;
 
@@ -946,7 +948,6 @@
 
             mediaRecorder.start();
 
-            // Persiapan urutan frame mundur untuk setiap slot
             let slotRevFramesList = [];
             for (let i = 0; i < totalPhotosRequired; i++) {
                 let frames = (capturedFramesArrays[i] && capturedFramesArrays[i].length > 0) ? [...capturedFramesArrays[i]] : [capturedPhotos[i]];
@@ -954,19 +955,20 @@
             }
 
             let frameStep = 0;
-            let totalSteps = Math.max(...slotRevFramesList.map(arr => arr.length));
-            if (totalSteps < 2) totalSteps = 15;
+            // Durasi video diperpanjang menjadi ~5 detik dengan total frame render yang lebih banyak
+            let totalDurationMs = 5000;
+            let intervalTime = 80;
+            let maxSteps = totalDurationMs / intervalTime;
 
-            // Render loop ke canvas secara real-time
             let renderInterval = setInterval(() => {
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-                // 1. Gambar Background/Theme Strip
+                // Background strip
                 ctx.fillStyle = '#ffffff';
                 if (selectedTheme === 'strip-theme-2' || selectedTheme === 'strip-theme-14' || selectedTheme === 'strip-theme-17') ctx.fillStyle = '#121212';
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
                 
-                // Header & Footer Text
+                // Header & Footer
                 ctx.fillStyle = (selectedTheme === 'strip-theme-2' || selectedTheme === 'strip-theme-14') ? '#ffffff' : '#000000';
                 ctx.font = 'bold 16px "Fredoka One", cursive';
                 ctx.textAlign = 'center';
@@ -975,15 +977,14 @@
                 ctx.font = 'bold 12px Poppins, sans-serif';
                 ctx.fillText("EUY • 2026", canvas.width / 2, canvas.height - 15);
 
-                // 2. Gambar Slot Foto & Animasi Mundur
-                let startY = 45;
+                let startY = 40;
                 let slotWidth = canvas.width - 24;
-                let slotHeight = (totalPhotosRequired === 2) ? ((canvas.height - 85 - 25) / 2) : ((canvas.height - 95 - 30) / 3);
+                let slotHeight = isPortrait2 ? ((canvas.height - 80 - 25) / 2) : ((canvas.height - 90 - 30) / 3);
                 let gap = 6;
 
                 for (let i = 0; i < totalPhotosRequired; i++) {
                     let curFrames = slotRevFramesList[i];
-                    let imgIndex = frameStep % curFrames.length;
+                    let imgIndex = Math.floor(frameStep) % curFrames.length;
                     let imgSrc = curFrames[imgIndex] || capturedPhotos[i];
 
                     let img = new Image();
@@ -997,7 +998,19 @@
                     ctx.clip();
                     
                     if (img.complete && img.naturalWidth !== 0) {
-                        ctx.drawImage(img, 12, currentY, slotWidth, slotHeight);
+                        // Menggunakan teknik cover agar gambar tidak gepeng/tertarik
+                        let iRatio = img.naturalWidth / img.naturalHeight;
+                        let sRatio = slotWidth / slotHeight;
+                        let dW = slotWidth, dH = slotHeight, dX = 12, dY = currentY;
+
+                        if (iRatio > sRatio) {
+                            dW = slotHeight * iRatio;
+                            dX = 12 - (dW - slotWidth) / 2;
+                        } else {
+                            dH = slotWidth / iRatio;
+                            dY = currentY - (dH - slotHeight) / 2;
+                        }
+                        ctx.drawImage(img, dX, dY, dW, dH);
                     } else {
                         ctx.fillStyle = '#333';
                         ctx.fillRect(12, currentY, slotWidth, slotHeight);
@@ -1006,12 +1019,12 @@
                 }
 
                 frameStep++;
-            }, 80);
+            }, intervalTime);
 
             setTimeout(() => {
                 clearInterval(renderInterval);
                 if (mediaRecorder.state === 'recording') mediaRecorder.stop();
-            }, 2500);
+            }, totalDurationMs);
         }
 
         function openFilterModal() {
