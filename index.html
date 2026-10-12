@@ -281,6 +281,11 @@
         .photo-slot-wrapper { position: relative; width: 100%; aspect-ratio: 4 / 3; box-sizing: border-box; }
         .photo-slot { width: 100%; height: 100%; background-size: cover; background-position: center; transform: scaleX(-1); position: relative; }
         
+        /* Slot video dalam strip Live Photo template */
+        .live-slot-video {
+            width: 100%; height: 100%; object-fit: cover; transform: scaleX(1); position: relative; display: block;
+        }
+        
         .photo-slot-wrapper-2photo { position: relative; width: 100%; aspect-ratio: 3 / 4; box-sizing: border-box; }
         .strip-footer { text-align: center; font-size: 10px; font-weight: 700; padding: 6px 0; letter-spacing: 1px; }
 
@@ -353,14 +358,10 @@
             padding: 20px; opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
         }
         .modal-overlay.active { opacity: 1; pointer-events: auto; }
-        .modal-content-wrapper { max-height: 70vh; overflow-y: auto; display: flex; justify-content: center; width: 100%; margin-bottom: 15px; }
+        .modal-content-wrapper { max-height: 75vh; overflow-y: auto; display: flex; justify-content: center; width: 100%; margin-bottom: 15px; }
         .modal-actions { display: flex; gap: 10px; width: 100%; max-width: 280px; justify-content: center; }
         .modal-actions .btn { padding: 10px; font-size: 13px; flex: 1; }
         
-        #live-playback-video {
-            width: 100%; max-width: 300px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.8);
-            transform: scaleX(1); /* Live photo tidak mirror */
-        }
         #capture-canvas { display: none; }
     </style>
 </head>
@@ -484,16 +485,16 @@
             </div>
         </div>
 
-        <!-- LIVE PHOTO PLAYER MODAL (Gaya Boomerang / Maju-Mundur) -->
+        <!-- LIVE PHOTO PLAYER MODAL (Live Photo Berdasarkan Template Pilihan) -->
         <div id="live-player-modal" class="modal-overlay" onclick="playPopSound(); closeLiveModal()">
             <div class="modal-content-wrapper" onclick="event.stopPropagation()">
-                <div style="display:flex; flex-direction:column; align-items:center; gap:10px; width:100%;">
-                    <h3 style="color:#fff; font-family:'Fredoka One',cursive; font-size:16px;">LIVE PHOTO PLAYBACK</h3>
-                    <video id="live-playback-video" autoplay playsinline muted></video>
+                <div style="display:flex; flex-direction:column; align-items:center; gap:8px; width:100%;">
+                    <h3 style="color:#fff; font-family:'Fredoka One',cursive; font-size:15px;">LIVE PHOTO TEMPLATE</h3>
+                    <div id="live-modal-strip-wrapper"></div>
                 </div>
             </div>
             <div class="modal-actions" onclick="event.stopPropagation()">
-                <button id="btn-download-live" class="btn btn-download" onclick="playPopSound(); downloadLiveVideo()">DOWNLOAD LIVE</button>
+                <button id="btn-download-live" class="btn btn-download" onclick="playPopSound(); downloadLiveStripModal()">DOWNLOAD</button>
                 <button class="btn btn-secondary" onclick="playPopSound(); closeLiveModal()">TUTUP</button>
             </div>
         </div>
@@ -550,11 +551,11 @@
         let totalPhotosRequired = 3;
         let capturedPhotos = [];
         let capturedVideoChunks = [];
-        let currentLiveVideoUrl = null;
+        let currentLiveVideoUrls = [];
         let currentPhotoIndex = 0;
         let isSimulated = false;
         let audioCtx = null;
-        let boomerangInterval = null;
+        let activeBoomerangIntervals = [];
         let photoGallery = JSON.parse(localStorage.getItem('potobok_gallery') || '[]');
         let openedFromScreen = 'home';
         let currentFilter = 'normal';
@@ -758,7 +759,7 @@
                         capturedVideoChunks.push(URL.createObjectURL(blob));
                     };
                     recorder.start();
-                    setTimeout(() => { if (recorder.state === 'recording') recorder.stop(); }, 1200);
+                    setTimeout(() => { if (recorder.state === 'recording') recorder.stop(); }, 2000); // 2 detik durasi live photo
                 } catch(e) {}
             }
 
@@ -836,39 +837,19 @@
             }
             applyPhotoFilter('normal', document.getElementById('f-btn-normal'));
 
-            currentLiveVideoUrl = capturedVideoChunks[0] || null;
+            currentLiveVideoUrls = [...capturedVideoChunks];
 
-            const stripRecord = { theme: selectedTheme, photoCount: totalPhotosRequired, photos: [...capturedPhotos], liveVideo: currentLiveVideoUrl, filter: currentFilter, date: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) };
+            const stripRecord = { theme: selectedTheme, photoCount: totalPhotosRequired, photos: [...capturedPhotos], liveVideos: [...currentLiveVideoUrls], filter: currentFilter, date: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) };
             photoGallery.unshift(stripRecord);
             if (photoGallery.length > 25) photoGallery.pop();
             localStorage.setItem('potobok_gallery', JSON.stringify(photoGallery));
             navigate('screen-result');
         }
 
-        // Efek Boomerang (Maju-Mundur otomatis) untuk Live Photo Playback
+        // Live Photo Modal: Menampilkan Strip Template Lengkap dengan Video Berjalan Berdasarkan Template Terpilih
         function playLivePhotoModal() {
-            const videoModal = document.getElementById('live-playback-video');
-            if (currentLiveVideoUrl) {
-                videoModal.src = currentLiveVideoUrl;
-                let filterStyle = getFilterCss(currentFilter);
-                videoModal.style.filter = filterStyle;
-                
-                if (boomerangInterval) clearInterval(boomerangInterval);
-
-                videoModal.onloadedmetadata = () => {
-                    videoModal.play();
-                    let isReversing = false;
-                    boomerangInterval = setInterval(() => {
-                        if (!isReversing && videoModal.currentTime >= videoModal.duration - 0.1) {
-                            isReversing = true;
-                            videoModal.playbackRate = -1.5; // Mundur agak cepat
-                        } else if (isReversing && videoModal.currentTime <= 0.1) {
-                            isReversing = false;
-                            videoModal.playbackRate = 1.5; // Maju
-                        }
-                    }, 100);
-                };
-
+            if (currentLiveVideoUrls.length > 0) {
+                renderLiveStripContainer(selectedTheme, totalPhotosRequired, currentLiveVideoUrls, currentFilter, 'live-modal-strip-wrapper');
                 document.getElementById('live-player-modal').classList.add('active');
             } else {
                 alert("Live photo video belum tersedia untuk sesi ini.");
@@ -876,19 +857,62 @@
         }
 
         function closeLiveModal() {
-            if (boomerangInterval) clearInterval(boomerangInterval);
-            const videoModal = document.getElementById('live-playback-video');
-            videoModal.pause();
+            activeBoomerangIntervals.forEach(interval => clearInterval(interval));
+            activeBoomerangIntervals = [];
+            document.querySelectorAll('.live-slot-video').forEach(v => v.pause());
             document.getElementById('live-player-modal').classList.remove('active');
         }
 
-        function downloadLiveVideo() {
-            if (currentLiveVideoUrl) {
-                const link = document.createElement('a');
-                link.download = `potobok-live-${Date.now()}.webm`;
-                link.href = currentLiveVideoUrl;
-                link.click();
+        function renderLiveStripContainer(themeClass, pCount, videoUrls, filterType, containerId) {
+            activeBoomerangIntervals.forEach(interval => clearInterval(interval));
+            activeBoomerangIntervals = [];
+
+            let slotClass = (pCount === 2) ? 'photo-slot-wrapper-2photo' : 'photo-slot-wrapper';
+            let filterStyle = getFilterCss(filterType);
+
+            let slotsHTML = '';
+            for (let i = 0; i < pCount; i++) {
+                let vUrl = videoUrls[i] || videoUrls[0];
+                slotsHTML += `
+                    <div class="${slotClass}">
+                        <video class="live-slot-video" src="${vUrl}" autoplay playsinline muted style="filter: ${filterStyle};"></video>
+                    </div>
+                `;
             }
+
+            const container = document.getElementById(containerId);
+            container.innerHTML = `
+                <div id="active-live-strip-element" class="frame-result ${themeClass}" style="width: 220px; animation: none;">
+                    <div class="strip-header">POTOBOK EUY!</div>
+                    <div style="display: flex; flex-direction: column; gap: 5px; padding: 0 5px;">${slotsHTML}</div>
+                    <div class="strip-footer">EUY • 2026</div>
+                </div>
+            `;
+
+            // Atur pemutaran boomerang (maju-mundur dari akhir ke awal, durasi ~2 detik)
+            const videoElements = container.querySelectorAll('.live-slot-video');
+            videoElements.forEach((videoEl) => {
+                videoEl.onloadedmetadata = () => {
+                    videoEl.currentTime = videoEl.duration; // Mulai dari akhir video
+                    videoEl.playbackRate = -1.2; // Putar mundur
+                    videoEl.play();
+
+                    let interval = setInterval(() => {
+                        if (videoEl.playbackRate < 0 && videoEl.currentTime <= 0.1) {
+                            videoEl.playbackRate = 1.2; // Putar maju
+                            videoEl.play();
+                        } else if (videoEl.playbackRate > 0 && videoEl.currentTime >= videoEl.duration - 0.1) {
+                            videoEl.playbackRate = -1.2; // Putar mundur kembali
+                            videoEl.play();
+                        }
+                    }, 100);
+                    activeBoomerangIntervals.push(interval);
+                };
+            });
+        }
+
+        function downloadLiveStripModal() {
+            downloadStripPhoto('active-live-strip-element', 'btn-download-live');
         }
 
         function openFilterModal() {
@@ -990,7 +1014,7 @@
         }
 
         function showGalleryDetail(item, themeClass, pCount) {
-            currentLiveVideoUrl = item.liveVideo || null;
+            currentLiveVideoUrls = item.liveVideos || [item.liveVideo];
             currentFilter = item.filter || 'normal';
             let slotClass = (pCount === 2) ? 'photo-slot-wrapper-2photo' : 'photo-slot-wrapper';
             let slotsHTML = `<div class="${slotClass}"><div class="photo-slot" style="background-image: url(${item.photos[0]})"></div></div>
