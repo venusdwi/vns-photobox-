@@ -757,7 +757,6 @@
                 let sWidth = vWidth, sHeight = vWidth / targetAspect, sx = 0, sy = (vHeight - sHeight) / 2;
                 if (sHeight > vHeight) { sHeight = vHeight; sWidth = vHeight * targetAspect; sx = (vWidth - sWidth) / 2; sy = 0; }
 
-                // Perekaman diperpanjang hingga 2.5 detik agar durasi video live lebih panjang & mulus
                 let captureInterval = setInterval(() => {
                     if (videoEl.readyState >= videoEl.HAVE_CURRENT_DATA) {
                         context.drawImage(videoEl, sx, sy, sWidth, sHeight, 0, 0, canvas.width, canvas.height);
@@ -898,7 +897,7 @@
             }
         }
 
-        // Perbaikan proporsi canvas agar hasil download video tidak gepeng dan durasinya lebih panjang
+        // Perekaman Video Sempurna: Ukuran proporsional persis dan normalisasi frame agar tidak ada blank hitam
         function downloadLiveStripVideoPerfect() {
             const btnDownload = document.getElementById('btn-download-live');
             btnDownload.innerText = "Merekam Video...";
@@ -908,10 +907,10 @@
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d');
             
-            // Rasio proporsional akurat untuk mencegah gepeng
             let isPortrait2 = (totalPhotosRequired === 2);
+            // Menggunakan ukuran pixel persis rasio standar frame foto statis
             canvas.width = 440;
-            canvas.height = isPortrait2 ? 740 : 800;
+            canvas.height = isPortrait2 ? 636 : 752;
 
             const stream = canvas.captureStream(20);
             let recordedChunks = [];
@@ -948,17 +947,39 @@
 
             mediaRecorder.start();
 
-            let slotRevFramesList = [];
+            // Normalisasi panjang array frame tiap slot agar seragam (menghilangkan blank hitam)
+            let maxFramesCount = 0;
+            let normalizedFramesList = [];
+
             for (let i = 0; i < totalPhotosRequired; i++) {
-                let frames = (capturedFramesArrays[i] && capturedFramesArrays[i].length > 0) ? [...capturedFramesArrays[i]] : [capturedPhotos[i]];
-                slotRevFramesList.push(frames.reverse());
+                let fArr = (capturedFramesArrays[i] && capturedFramesArrays[i].length > 0) ? [...capturedFramesArrays[i]] : [capturedPhotos[i]];
+                if (fArr.length > maxFramesCount) maxFramesCount = fArr.length;
+            }
+
+            for (let i = 0; i < totalPhotosRequired; i++) {
+                let fArr = (capturedFramesArrays[i] && capturedFramesArrays[i].length > 0) ? [...capturedFramesArrays[i]] : [capturedPhotos[i]];
+                let rev = fArr.reverse();
+                // Jika frame kurang dari maksimum, looping frame terakhir agar durasi sama rata
+                while (rev.length < maxFramesCount) {
+                    rev.push(rev[rev.length - 1]);
+                }
+                normalizedFramesList.push(rev);
             }
 
             let frameStep = 0;
-            // Durasi video diperpanjang menjadi ~5 detik dengan total frame render yang lebih banyak
             let totalDurationMs = 5000;
             let intervalTime = 80;
-            let maxSteps = totalDurationMs / intervalTime;
+            let totalSteps = maxFramesCount;
+
+            // Preload semua objek gambar agar langsung siap render tanpa jeda hitam
+            let preloadedImages = normalizedFramesList.map(slotArr => {
+                return slotArr.map(src => {
+                    let img = new Image();
+                    img.crossOrigin = "anonymous";
+                    img.src = src;
+                    return img;
+                });
+            });
 
             let renderInterval = setInterval(() => {
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -983,13 +1004,8 @@
                 let gap = 6;
 
                 for (let i = 0; i < totalPhotosRequired; i++) {
-                    let curFrames = slotRevFramesList[i];
-                    let imgIndex = Math.floor(frameStep) % curFrames.length;
-                    let imgSrc = curFrames[imgIndex] || capturedPhotos[i];
-
-                    let img = new Image();
-                    img.crossOrigin = "anonymous";
-                    img.src = imgSrc;
+                    let imgIndex = Math.floor(frameStep) % totalSteps;
+                    let img = preloadedImages[i][imgIndex];
 
                     let currentY = startY + (i * (slotHeight + gap));
                     ctx.save();
@@ -997,8 +1013,7 @@
                     ctx.roundRect(12, currentY, slotWidth, slotHeight, 6);
                     ctx.clip();
                     
-                    if (img.complete && img.naturalWidth !== 0) {
-                        // Menggunakan teknik cover agar gambar tidak gepeng/tertarik
+                    if (img && img.complete && img.naturalWidth !== 0) {
                         let iRatio = img.naturalWidth / img.naturalHeight;
                         let sRatio = slotWidth / slotHeight;
                         let dW = slotWidth, dH = slotHeight, dX = 12, dY = currentY;
