@@ -281,8 +281,8 @@
         .photo-slot-wrapper { position: relative; width: 100%; aspect-ratio: 4 / 3; box-sizing: border-box; }
         .photo-slot { width: 100%; height: 100%; background-size: cover; background-position: center; transform: scaleX(-1); position: relative; }
         
-        /* Slot Video Live Photo (Maju, Loop, dan tidak mirror) */
-        .live-slot-video {
+        /* Slot Canvas Live Photo (Ukuran & Tampilan 100% Identik dengan Foto Utama) */
+        .live-slot-canvas {
             width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); position: relative; display: block;
         }
         
@@ -550,8 +550,8 @@
         let selectedTheme = 'strip-theme-1';
         let totalPhotosRequired = 3;
         let capturedPhotos = [];
-        let capturedVideoChunks = [];
-        let currentLiveVideoUrls = [];
+        let capturedFramesArrays = []; // Menyimpan array frame gambar per slot untuk animasi mundur sempurna
+        let activeLiveIntervals = [];
         let currentPhotoIndex = 0;
         let isSimulated = false;
         let audioCtx = null;
@@ -676,7 +676,7 @@
             selectedTheme = themeClass;
             totalPhotosRequired = photoCount;
             capturedPhotos = [];
-            capturedVideoChunks = [];
+            capturedFramesArrays = [];
             currentPhotoIndex = 0;
             isSimulated = false;
             
@@ -748,43 +748,48 @@
             flash.style.opacity = '1';
             setTimeout(() => { flash.style.opacity = '0'; }, 150);
 
-            // Merekam video 2 detik untuk setiap slot foto secara akurat
-            if (!isSimulated && cameraStream) {
-                try {
-                    let localChunks = [];
-                    let recorder = new MediaRecorder(cameraStream, { mimeType: 'video/webm;codecs=vp8' });
-                    recorder.ondataavailable = e => { if (e.data.size > 0) localChunks.push(e.data); };
-                    recorder.onstop = () => {
-                        const blob = new Blob(localChunks, { type: 'video/webm' });
-                        capturedVideoChunks.push(URL.createObjectURL(blob));
-                    };
-                    recorder.start();
-                    setTimeout(() => { if (recorder.state === 'recording') recorder.stop(); }, 2000);
-                } catch(e) {
-                    capturedVideoChunks.push(null);
-                }
+            // Merekam rangkaian frame selama 1.5 detik sebelum shutter ditekan untuk efek mundur (reverse)
+            let slotFrames = [];
+            const videoEl = document.getElementById('live-video');
+            const canvas = document.getElementById('capture-canvas');
+            const context = canvas.getContext('2d');
+            
+            let targetAspect = (totalPhotosRequired === 2) ? (3 / 4) : (4 / 3);
+            canvas.width = (totalPhotosRequired === 2) ? 480 : 640;
+            canvas.height = (totalPhotosRequired === 2) ? 640 : 480;
+
+            if (!isSimulated && videoEl.readyState === videoEl.HAVE_ENOUGH_DATA) {
+                const vWidth = videoEl.videoWidth, vHeight = videoEl.videoHeight;
+                let sWidth = vWidth, sHeight = vWidth / targetAspect, sx = 0, sy = (vHeight - sHeight) / 2;
+                if (sHeight > vHeight) { sHeight = vHeight; sWidth = vHeight * targetAspect; sx = (vWidth - sWidth) / 2; sy = 0; }
+
+                // Ambil 15 frame berturut-turut menjelang jepretan
+                let captureInterval = setInterval(() => {
+                    if (videoEl.readyState >= videoEl.HAVE_CURRENT_DATA) {
+                        context.drawImage(videoEl, sx, sy, sWidth, sHeight, 0, 0, canvas.width, canvas.height);
+                        slotFrames.push(canvas.toDataURL('image/jpeg', 0.8));
+                    }
+                }, 80);
+
+                setTimeout(() => {
+                    clearInterval(captureInterval);
+                    if (slotFrames.length === 0) slotFrames.push(canvas.toDataURL('image/jpeg', 0.85));
+                    capturedFramesArrays.push(slotFrames);
+                }, 1200);
             } else {
-                capturedVideoChunks.push(null);
+                slotFrames.push(`https://placehold.co/600x450/ff5722/ffffff?text=FOTO+${currentPhotoIndex+1}`);
+                capturedFramesArrays.push(slotFrames);
             }
 
             let dataUrl = "";
-            const videoEl = document.getElementById('live-video');
             if (!isSimulated && videoEl.readyState === videoEl.HAVE_ENOUGH_DATA) {
-                const canvas = document.getElementById('capture-canvas');
-                const context = canvas.getContext('2d');
                 const vWidth = videoEl.videoWidth, vHeight = videoEl.videoHeight;
-                
-                let targetAspect = (totalPhotosRequired === 2) ? (3 / 4) : (4 / 3);
                 let sWidth = vWidth, sHeight = vWidth / targetAspect, sx = 0, sy = (vHeight - sHeight) / 2;
                 if (sHeight > vHeight) { sHeight = vHeight; sWidth = vHeight * targetAspect; sx = (vWidth - sWidth) / 2; sy = 0; }
-                
-                canvas.width = (totalPhotosRequired === 2) ? 480 : 640;
-                canvas.height = (totalPhotosRequired === 2) ? 640 : 480;
                 context.drawImage(videoEl, sx, sy, sWidth, sHeight, 0, 0, canvas.width, canvas.height);
                 dataUrl = canvas.toDataURL('image/jpeg', 0.85);
             } else {
-                const colors = ['#ff5722', '#00bcd4', '#8bc34a'];
-                dataUrl = `https://placehold.co/600x450/${colors[currentPhotoIndex % 3].replace('#','')}/ffffff?text=FOTO+${currentPhotoIndex+1}`;
+                dataUrl = `https://placehold.co/600x450/ff5722/ffffff?text=FOTO+${currentPhotoIndex+1}`;
             }
             capturedPhotos.push(dataUrl);
             videoEl.style.display = 'none';
@@ -841,48 +846,39 @@
             }
             applyPhotoFilter('normal', document.getElementById('f-btn-normal'));
 
-            currentLiveVideoUrls = [...capturedVideoChunks];
-
-            const stripRecord = { theme: selectedTheme, photoCount: totalPhotosRequired, photos: [...capturedPhotos], liveVideos: [...currentLiveVideoUrls], filter: currentFilter, date: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) };
+            const stripRecord = { theme: selectedTheme, photoCount: totalPhotosRequired, photos: [...capturedPhotos], liveFrames: [...capturedFramesArrays], filter: currentFilter, date: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) };
             photoGallery.unshift(stripRecord);
             if (photoGallery.length > 25) photoGallery.pop();
             localStorage.setItem('potobok_gallery', JSON.stringify(photoGallery));
             navigate('screen-result');
         }
 
-        // Live Photo Modal: Memastikan strip template 2 atau 3 slot tampil dengan ukuran dan video maju (loop) yang berfungsi penuh
+        // Live Photo Modal: Menampilkan animasi mundur (reverse) di setiap slot dengan ukuran identik
         function playLivePhotoModal() {
-            renderLiveStripContainer(selectedTheme, totalPhotosRequired, currentLiveVideoUrls, capturedPhotos, currentFilter, 'live-modal-strip-wrapper');
+            renderLiveStripContainer(selectedTheme, totalPhotosRequired, capturedFramesArrays, capturedPhotos, currentFilter, 'live-modal-strip-wrapper');
             document.getElementById('live-player-modal').classList.add('active');
         }
 
         function closeLiveModal() {
-            document.querySelectorAll('.live-slot-video').forEach(v => v.pause());
+            activeLiveIntervals.forEach(timer => clearInterval(timer));
+            activeLiveIntervals = [];
             document.getElementById('live-player-modal').classList.remove('active');
         }
 
-        function renderLiveStripContainer(themeClass, pCount, videoUrls, photoUrls, filterType, containerId) {
+        function renderLiveStripContainer(themeClass, pCount, framesArrays, photoUrls, filterType, containerId) {
+            activeLiveIntervals.forEach(timer => clearInterval(timer));
+            activeLiveIntervals = [];
+
             let slotClass = (pCount === 2) ? 'photo-slot-wrapper-2photo' : 'photo-slot-wrapper';
             let filterStyle = getFilterCss(filterType);
 
             let slotsHTML = '';
             for (let i = 0; i < pCount; i++) {
-                let vUrl = videoUrls[i];
-                let pUrl = photoUrls[i] || photoUrls[0];
-                
-                if (vUrl) {
-                    slotsHTML += `
-                        <div class="${slotClass}">
-                            <video class="live-slot-video" src="${vUrl}" autoplay playsinline muted loop style="filter: ${filterStyle};"></video>
-                        </div>
-                    `;
-                } else {
-                    slotsHTML += `
-                        <div class="${slotClass}">
-                            <div class="photo-slot" style="background-image: url(${pUrl}); filter: ${filterStyle};"></div>
-                        </div>
-                    `;
-                }
+                slotsHTML += `
+                    <div class="${slotClass}">
+                        <div class="photo-slot" id="live-slot-img-${i}" style="background-image: url(${photoUrls[i] || photoUrls[0]}); filter: ${filterStyle};"></div>
+                    </div>
+                `;
             }
 
             const container = document.getElementById(containerId);
@@ -893,6 +889,22 @@
                     <div class="strip-footer">EUY • 2026</div>
                 </div>
             `;
+
+            // Jalankan animasi putar mundur (reverse playback) untuk setiap slot
+            for (let i = 0; i < pCount; i++) {
+                let frames = (framesArrays[i] && framesArrays[i].length > 0) ? [...framesArrays[i]] : [photoUrls[i]];
+                let slotDiv = document.getElementById(`live-slot-img-${i}`);
+                if (slotDiv && frames.length > 1) {
+                    // Balik urutan frame agar bergerak mundur
+                    let revFrames = frames.reverse();
+                    let fIndex = 0;
+                    let timer = setInterval(() => {
+                        slotDiv.style.backgroundImage = `url(${revFrames[fIndex]})`;
+                        fIndex = (fIndex + 1) % revFrames.length;
+                    }, 100);
+                    activeLiveIntervals.push(timer);
+                }
+            }
         }
 
         function downloadLiveStripModal() {
@@ -998,9 +1010,12 @@
         }
 
         function showGalleryDetail(item, themeClass, pCount) {
-            currentLiveVideoUrls = item.liveVideos || [];
+            capturedFramesArrays = item.liveFrames || [];
             capturedPhotos = item.photos || [];
+            selectedTheme = themeClass;
+            totalPhotosRequired = pCount;
             currentFilter = item.filter || 'normal';
+            
             let slotClass = (pCount === 2) ? 'photo-slot-wrapper-2photo' : 'photo-slot-wrapper';
             let slotsHTML = `<div class="${slotClass}"><div class="photo-slot" style="background-image: url(${item.photos[0]})"></div></div>
                              <div class="${slotClass}"><div class="photo-slot" style="background-image: url(${item.photos[1]})"></div></div>`;
