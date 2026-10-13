@@ -489,7 +489,7 @@
                 </div>
             </div>
             <div class="modal-actions" onclick="event.stopPropagation()">
-                <button id="btn-download-live" class="btn btn-download" onclick="playPopSound(); downloadLiveStripIronclad()">DOWNLOAD VIDEO</button>
+                <button id="btn-download-live" class="btn btn-download" onclick="playPopSound(); downloadLiveStripWorkingAnimated()">DOWNLOAD VIDEO</button>
                 <button class="btn btn-secondary" onclick="playPopSound(); closeLiveModal()">TUTUP</button>
             </div>
         </div>
@@ -743,6 +743,7 @@
             flash.style.opacity = '1';
             setTimeout(() => { flash.style.opacity = '0'; }, 150);
 
+            let slotFrames = [];
             const videoEl = document.getElementById('live-video');
             const canvas = document.getElementById('capture-canvas');
             const context = canvas.getContext('2d');
@@ -761,12 +762,31 @@
             } else {
                 dataUrl = `https://placehold.co/600x450/ff5722/ffffff?text=FOTO+${currentPhotoIndex+1}`;
             }
-
             capturedPhotos.push(dataUrl);
-            
-            // GARANSI ANTI-BLANK: Menggunakan foto utama yang di-clone dengan variasi halus agar stabil dan tidak pernah menghasilkan array frame kosong/hitam
-            let slotFrames = [dataUrl, dataUrl, dataUrl, dataUrl, dataUrl];
-            capturedFramesArrays.push(slotFrames);
+
+            if (!isSimulated && videoEl.readyState === videoEl.HAVE_ENOUGH_DATA) {
+                const vWidth = videoEl.videoWidth, vHeight = videoEl.videoHeight;
+                let sWidth = vWidth, sHeight = vWidth / targetAspect, sx = 0, sy = (vHeight - sHeight) / 2;
+                if (sHeight > vHeight) { sHeight = vHeight; sWidth = vHeight * targetAspect; sx = (vWidth - sWidth) / 2; sy = 0; }
+
+                let captureInterval = setInterval(() => {
+                    if (videoEl.readyState >= videoEl.HAVE_CURRENT_DATA) {
+                        context.drawImage(videoEl, sx, sy, sWidth, sHeight, 0, 0, canvas.width, canvas.height);
+                        let frameUrl = canvas.toDataURL('image/jpeg', 0.8);
+                        if (frameUrl && frameUrl.length > 200) slotFrames.push(frameUrl);
+                    }
+                }, 60);
+
+                setTimeout(() => {
+                    clearInterval(captureInterval);
+                    if (slotFrames.length < 2) {
+                        slotFrames = [dataUrl, dataUrl, dataUrl, dataUrl];
+                    }
+                    capturedFramesArrays.push(slotFrames);
+                }, 2000);
+            } else {
+                capturedFramesArrays.push([dataUrl, dataUrl, dataUrl]);
+            }
 
             videoEl.style.display = 'none';
             const previewBox = document.getElementById('captured-preview-box');
@@ -866,16 +886,24 @@
             `;
 
             for (let i = 0; i < pCount; i++) {
-                let currentPhoto = photoUrls[i] || photoUrls[0];
+                let rawFrames = (framesArrays[i] && framesArrays[i].length > 0) ? framesArrays[i] : [photoUrls[i]];
+                let validFrames = rawFrames.filter(url => url && url.length > 200);
+                if (validFrames.length === 0) validFrames = [photoUrls[i]];
+
                 let slotDiv = document.getElementById(`live-slot-img-${i}`);
-                if (slotDiv) {
-                    slotDiv.style.backgroundImage = `url(${currentPhoto})`;
+                if (slotDiv && validFrames.length > 0) {
+                    let fIndex = 0;
+                    let timer = setInterval(() => {
+                        slotDiv.style.backgroundImage = `url(${validFrames[fIndex]})`;
+                        fIndex = (fIndex + 1) % validFrames.length;
+                    }, 100);
+                    activeLiveIntervals.push(timer);
                 }
             }
         }
 
-        // Perekaman video live photo ironclad: 100% menggunakan capturedPhotos yang dijamin selalu terisi penuh tanpa celah hitam
-        function downloadLiveStripIronclad() {
+        // Perekaman video live photo dengan animasi aktif dan validasi ketat anti-blank hitam
+        function downloadLiveStripWorkingAnimated() {
             const btnDownload = document.getElementById('btn-download-live');
             btnDownload.innerText = "Merekam Video...";
             btnDownload.style.opacity = "0.7";
@@ -923,24 +951,36 @@
 
             mediaRecorder.start();
 
-            // Preload gambar utama untuk setiap slot dengan jaminan tanpa blank
-            let preloadedImages = [];
+            // Normalisasi frame dengan fallback otomatis ke foto statis jika ada slot yang kosong
+            let normalizedFramesLists = [];
+            let maxFramesCount = 10;
+
             for (let i = 0; i < totalPhotosRequired; i++) {
-                let img = new Image();
-                img.crossOrigin = "anonymous";
-                img.src = capturedPhotos[i] || capturedPhotos[0];
-                preloadedImages.push(img);
+                let rawFrames = (capturedFramesArrays[i] && capturedFramesArrays[i].length > 0) ? capturedFramesArrays[i] : [capturedPhotos[i]];
+                let validFrames = rawFrames.filter(url => url && url.length > 200);
+                if (validFrames.length === 0) validFrames = [capturedPhotos[i]];
+                normalizedFramesLists.push(validFrames);
+                if (validFrames.length > maxFramesCount) maxFramesCount = validFrames.length;
             }
 
+            // Preload gambar objek dengan proteksi mutlak
+            let preloadedFramesImages = normalizedFramesLists.map((slotFrames, sIdx) => {
+                return slotFrames.map(src => {
+                    let img = new Image();
+                    img.crossOrigin = "anonymous";
+                    img.src = src || capturedPhotos[sIdx];
+                    return img;
+                });
+            });
+
             let step = 0;
-            let totalDurationMs = 4000;
-            let intervalTime = 80;
-            let maxFramesCount = 50;
+            let totalDurationMs = 4500;
+            let intervalTime = 100;
 
             let renderInterval = setInterval(() => {
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-                // Background dasar strip
+                // Background dasar strip sesuai tema
                 ctx.fillStyle = '#ffffff';
                 if (selectedTheme === 'strip-theme-2' || selectedTheme === 'strip-theme-14' || selectedTheme === 'strip-theme-17') {
                     ctx.fillStyle = '#121212';
@@ -963,7 +1003,9 @@
                 let gap = 6;
 
                 for (let i = 0; i < totalPhotosRequired; i++) {
-                    let img = preloadedImages[i];
+                    let slotImages = preloadedFramesImages[i];
+                    let fIdx = step % slotImages.length;
+                    let img = slotImages[fIdx] || slotImages[0];
                     let currentY = startY + (i * (slotHeight + gap));
 
                     ctx.save();
@@ -989,8 +1031,9 @@
                         }
                         ctx.drawImage(img, dX, dY, dW, dH);
                     } else {
-                        ctx.fillStyle = '#333';
-                        ctx.fillRect(12, currentY, slotWidth, slotHeight);
+                        let fallbackImg = new Image();
+                        fallbackImg.src = capturedPhotos[i];
+                        ctx.drawImage(fallbackImg, 12, currentY, slotWidth, slotHeight);
                     }
                     ctx.restore();
                 }
