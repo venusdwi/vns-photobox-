@@ -489,7 +489,7 @@
                 </div>
             </div>
             <div class="modal-actions" onclick="event.stopPropagation()">
-                <button id="btn-download-live" class="btn btn-download" onclick="playPopSound(); downloadLiveStripPureCanvas()">DOWNLOAD VIDEO</button>
+                <button id="btn-download-live" class="btn btn-download" onclick="playPopSound(); downloadLiveStripPureCanvasSafe()">DOWNLOAD VIDEO</button>
                 <button class="btn btn-secondary" onclick="playPopSound(); closeLiveModal()">TUTUP</button>
             </div>
         </div>
@@ -897,8 +897,8 @@
             }
         }
 
-        // Perekaman video live photo murni menggunakan Canvas 2D API tanpa html2canvas agar 100% pas, tanpa zoom, dan tanpa blank hitam
-        function downloadLiveStripPureCanvas() {
+        // Perekaman video live photo murni menggunakan Canvas 2D dengan pengaman ganda agar tidak ada slot kosong/hitam
+        function downloadLiveStripPureCanvasSafe() {
             const btnDownload = document.getElementById('btn-download-live');
             btnDownload.innerText = "Merekam Video...";
             btnDownload.style.opacity = "0.7";
@@ -946,7 +946,7 @@
 
             mediaRecorder.start();
 
-            // Normalisasi frame agar jumlahnya sama rata dan tidak pernah kosong/hitam
+            // Pengaman mutlak: Jika array capturedFramesArrays[i] kosong/tidak ada, langsung jadikan foto statis utama sebagai array frame tunggal agar tidak pernah blank hitam
             let maxFramesCount = 20;
             for (let i = 0; i < totalPhotosRequired; i++) {
                 let fArr = (capturedFramesArrays[i] && capturedFramesArrays[i].length > 0) ? capturedFramesArrays[i] : [capturedPhotos[i]];
@@ -955,20 +955,20 @@
 
             let normalizedFramesList = [];
             for (let i = 0; i < totalPhotosRequired; i++) {
-                let fArr = (capturedFramesArrays[i] && capturedFramesArrays[i].length > 0) ? [...capturedFramesArrays[i]] : [capturedPhotos[i]];
-                let rev = fArr.reverse();
+                let rawArr = (capturedFramesArrays[i] && capturedFramesArrays[i].length > 0) ? capturedFramesArrays[i] : [capturedPhotos[i]];
+                let rev = [...rawArr].reverse();
                 while (rev.length < maxFramesCount) {
                     rev.push(capturedPhotos[i] || rev[0]);
                 }
                 normalizedFramesList.push(rev);
             }
 
-            // Preload seluruh gambar frame animasi
-            let preloadedImages = normalizedFramesList.map(slotArr => {
+            // Preload seluruh gambar dengan fallback ganda ke capturedPhotos[i]
+            let preloadedImages = normalizedFramesList.map((slotArr, slotIdx) => {
                 return slotArr.map(src => {
                     let img = new Image();
                     img.crossOrigin = "anonymous";
-                    img.src = src;
+                    img.src = src || capturedPhotos[slotIdx];
                     return img;
                 });
             });
@@ -1018,7 +1018,6 @@
                     ctx.clip();
 
                     if (img && img.complete && img.naturalWidth !== 0) {
-                        // Perataan gambar object-fit: cover sempurna tanpa zoom berlebih atau gepeng
                         let iRatio = img.naturalWidth / img.naturalHeight;
                         let sRatio = slotWidth / slotHeight;
                         let dW = slotWidth, dH = slotHeight, dX = 12, dY = currentY;
@@ -1032,8 +1031,10 @@
                         }
                         ctx.drawImage(img, dX, dY, dW, dH);
                     } else {
-                        ctx.fillStyle = '#333';
-                        ctx.fillRect(12, currentY, slotWidth, slotHeight);
+                        // Fallback aman mutlak gambar statis utama jika frame gagal
+                        let fallbackImg = new Image();
+                        fallbackImg.src = capturedPhotos[i];
+                        ctx.drawImage(fallbackImg, 12, currentY, slotWidth, slotHeight);
                     }
                     ctx.restore();
                 }
